@@ -561,6 +561,185 @@ h3 {
   font-weight: 750;
 }
 
+.map-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.map-heading {
+  max-width: 840px;
+}
+
+.map-heading h1 {
+  font-size: 46px;
+}
+
+.map-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(420px, 1.22fr);
+  align-items: center;
+  gap: 28px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 90% 16%, rgba(189, 224, 255, 0.55), transparent 26%),
+    linear-gradient(135deg, #ffffff, #f1f8fb);
+}
+
+.map-hero h2,
+.map-section h2 {
+  font-size: 32px;
+}
+
+.map-hero p:not(.eyebrow) {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.map-hero img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.map-section {
+  margin-top: 18px;
+}
+
+.section-heading--compact {
+  margin: 0 0 18px;
+}
+
+.workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workflow-card {
+  position: relative;
+  min-height: 210px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.workflow-card:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -13px;
+  top: 50%;
+  z-index: 1;
+  width: 15px;
+  height: 2px;
+  background: #82bde7;
+}
+
+.workflow-card span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #edf6fb;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.workflow-card h3 {
+  margin-top: 18px;
+  font-size: 22px;
+}
+
+.workflow-card p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.map-node {
+  min-height: 180px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.map-node::before {
+  content: "";
+  display: block;
+  width: 52px;
+  height: 7px;
+  margin-bottom: 20px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.map-node--blue::before {
+  background: #82bde7;
+}
+
+.map-node--gold::before {
+  background: var(--gold);
+}
+
+.map-node--pink::before {
+  background: #f2b8c6;
+}
+
+.map-node h3 {
+  font-size: 24px;
+}
+
+.map-node p {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.closeout-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(320px, 1.22fr);
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf0;
+}
+
+.closeout-panel h2 {
+  font-size: 32px;
+}
+
+.closeout-panel p {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.closeout-panel ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.closeout-panel li {
+  color: #334038;
+  font-size: 17px;
+}
+
+.closeout-panel li + li {
+  margin-top: 10px;
+}
+
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr;
@@ -588,6 +767,20 @@ h3 {
 
   .about-grid {
     grid-template-columns: 1fr;
+  }
+
+  .map-hero,
+  .closeout-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-grid,
+  .node-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-card:not(:last-child)::after {
+    display: none;
   }
 }
 
@@ -692,5 +885,30 @@ h3 {
   .prose li,
   .prose blockquote {
     font-size: 16px;
+  }
+
+  .map-heading h1 {
+    font-size: 34px;
+  }
+
+  .map-hero,
+  .closeout-panel {
+    padding: 20px;
+  }
+
+  .map-hero h2,
+  .map-section h2,
+  .closeout-panel h2 {
+    font-size: 26px;
+  }
+
+  .workflow-grid,
+  .node-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-card,
+  .map-node {
+    min-height: 0;
   }
 }
