@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { PostCard } from "@/components/PostCard";
 import { getAllPosts } from "@/lib/posts";
@@ -25,6 +26,28 @@ export default function HomePage() {
           </div>
         </div>
         <div className="hero__visual" aria-hidden="true">
+          <Image
+            className="decor decor--pup"
+            src="/decor/cloud-pup.svg"
+            width={230}
+            height={190}
+            alt=""
+            priority
+          />
+          <Image
+            className="decor decor--stars"
+            src="/decor/cinnamon-stars.svg"
+            width={164}
+            height={130}
+            alt=""
+          />
+          <Image
+            className="decor decor--moon"
+            src="/decor/moon-cloud.svg"
+            width={150}
+            height={116}
+            alt=""
+          />
           <div className="note note--main">
             <span>Today</span>
             <strong>Write clearly.</strong>
