@@ -3,8 +3,14 @@ import path from "node:path"
 import { slugifyFilePath } from "@quartz-community/utils"
 
 const STICKER_DIR = path.resolve("content/assets/couple-calendar-stickers")
+const WALL_STICKER_DIR = path.resolve("content/assets/stickers")
 const DAILY_LOG = path.resolve("content/Our Calendar/每日记录编辑本.md")
 const CALENDAR_PAGE = path.resolve("content/Our Calendar/index.md")
+const WALL_PACK_LABELS = new Map([
+  ["koonyangi", "Koonyangi"],
+  ["mini-mini-somchi-2", "Mini Mini Somchi 2"],
+  ["somchi", "Somchi"],
+])
 
 const MONTH_START_MARKER = "<!-- calendar-months:start -->"
 const MONTH_END_MARKER = "<!-- calendar-months:end -->"
@@ -37,6 +43,7 @@ function isoDate(year, month, day) {
 
 function ensureDirs() {
   fs.mkdirSync(STICKER_DIR, { recursive: true })
+  fs.mkdirSync(WALL_STICKER_DIR, { recursive: true })
   fs.mkdirSync(path.dirname(DAILY_LOG), { recursive: true })
 }
 
@@ -76,9 +83,50 @@ function humanName(filePath) {
     .trim()
 }
 
+function titleFromSlug(slug) {
+  return slug
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+}
+
+function wallStickerPack(filePath) {
+  const relative = toPosix(path.relative(WALL_STICKER_DIR, filePath))
+  return relative.split("/")[0] || "uncategorized"
+}
+
+function wallStickerPackLabel(pack) {
+  return WALL_PACK_LABELS.get(pack) ?? titleFromSlug(pack)
+}
+
 function publicStickerPath(filePath) {
   const relativeToContent = toPosix(path.relative(path.resolve("content"), filePath))
   return `../${slugifyFilePath(relativeToContent)}`
+}
+
+function publicRootAssetPath(filePath) {
+  const relativeToContent = toPosix(path.relative(path.resolve("content"), filePath))
+  return `/${slugifyFilePath(relativeToContent)}`
+}
+
+function makeWallAssetScript(imageFiles) {
+  const assets = imageFiles.map((filePath) => {
+    const category = wallStickerPack(filePath)
+    return {
+      name: humanName(filePath),
+      src: publicRootAssetPath(filePath),
+      category,
+      categoryLabel: wallStickerPackLabel(category),
+      pack: category,
+    }
+  })
+
+  return [
+    '<script type="application/json" data-sticker-assets>',
+    JSON.stringify(assets, null, 2),
+    "</script>",
+  ].join("\n")
 }
 
 function makeStickerIndex(imageFiles) {
@@ -307,7 +355,7 @@ function makeMonthNav(key, months) {
   ].join("\n")
 }
 
-function makeMonthBlock(entries) {
+function makeMonthBlock(entries, wallStickerFiles) {
   if (entries.length === 0) {
     return [
       MONTH_START_MARKER,
@@ -333,6 +381,20 @@ function makeMonthBlock(entries) {
 
   return [
     MONTH_START_MARKER,
+    '<div class="calendar-sticker-wall" data-sticker-wall data-sticker-storage-key="qinzi27-calendar-sticker-wall-v1">',
+    '  <div class="sticker-category-filter calendar-sticker-category-filter" data-sticker-categories aria-label="Calendar sticker categories"></div>',
+    '  <div class="sticker-wall-toolbar calendar-sticker-toolbar" aria-label="Calendar sticker controls">',
+    '    <button type="button" data-sticker-add>随机贴一张</button>',
+    '    <button type="button" data-sticker-burst>撒在日历上</button>',
+    '    <label class="sticker-upload-button">',
+    "      上传暂存",
+    '      <input type="file" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml,image/avif" multiple data-sticker-upload />',
+    "    </label>",
+    '    <button type="button" data-sticker-clear-uploads>清空暂存</button>',
+    '    <button type="button" data-sticker-clear>清空日历贴纸</button>',
+    "  </div>",
+    '  <div class="sticker-stage calendar-sticker-stage" data-sticker-stage aria-label="Uploaded calendar sticker staging area"></div>',
+    makeWallAssetScript(wallStickerFiles).replace(/^/gm, "  "),
     '<div class="couple-month-pager">',
     "<style>",
     ...dynamicStyles,
@@ -347,7 +409,7 @@ function makeMonthBlock(entries) {
       return `    <label for="${monthInputId(key)}">${month}月</label>`
     }),
     "  </div>",
-    '  <div class="couple-month-slides">',
+    '  <div class="couple-month-slides calendar-sticker-board" data-sticker-board>',
     ...months.map(
       (key) =>
         [
@@ -358,6 +420,7 @@ function makeMonthBlock(entries) {
         ].join("\n"),
     ),
     "  </div>",
+    "</div>",
     "</div>",
     MONTH_END_MARKER,
   ].join("\n")
@@ -533,11 +596,12 @@ function updateCalendarPage({ monthBlock, stickerBlock, entryBlock }) {
 
 ensureDirs()
 const imageFiles = walkImages(STICKER_DIR).sort((a, b) => a.localeCompare(b, "zh-CN"))
+const wallStickerFiles = walkImages(WALL_STICKER_DIR).sort((a, b) => a.localeCompare(b, "zh-CN"))
 const stickerIndex = makeStickerIndex(imageFiles)
 const entries = parseEntries(readDailyLog())
 
 updateCalendarPage({
-  monthBlock: makeMonthBlock(entries),
+  monthBlock: makeMonthBlock(entries, wallStickerFiles),
   stickerBlock: makeStickerBlock(imageFiles),
   entryBlock: makeEntryBlock(entries, stickerIndex),
 })

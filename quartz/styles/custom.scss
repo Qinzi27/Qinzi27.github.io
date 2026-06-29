@@ -666,6 +666,295 @@ code {
   vertical-align: middle;
 }
 
+.sticker-wall {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.sticker-wall-links {
+  margin: 0;
+}
+
+.sticker-wall-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.46rem 0.74rem;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(223, 242, 255, 0.72);
+  color: #285e73;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.sticker-wall-links a:hover {
+  border-color: rgba(47, 107, 91, 0.45);
+  background: rgba(223, 246, 235, 0.8);
+  color: #2f6b5b;
+}
+
+.sticker-category-filter,
+.sticker-category-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sticker-category-button,
+.sticker-category-index a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.15rem;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid rgba(121, 166, 171, 0.32);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: #3f5f61;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sticker-category-button:hover,
+.sticker-category-index a:hover {
+  border-color: rgba(47, 107, 91, 0.46);
+  background: rgba(223, 246, 235, 0.74);
+}
+
+.sticker-category-button.is-active,
+.sticker-category-button[aria-pressed="true"] {
+  border-color: #2f6b5b;
+  background: #2f6b5b;
+  color: white;
+}
+
+.sticker-category-index {
+  margin: 0.8rem 0 1.2rem;
+}
+
+.sticker-category-index span {
+  margin-left: 0.42rem;
+  color: inherit;
+  font-family: var(--codeFont);
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.sticker-category-gallery {
+  display: grid;
+  gap: 1.15rem;
+  margin: 1rem 0 2rem;
+}
+
+.sticker-category-section {
+  padding: 1rem;
+  border: 1px solid rgba(121, 166, 171, 0.24);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 10px 24px rgba(68, 98, 104, 0.08);
+}
+
+.sticker-category-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.sticker-category-header h2 {
+  margin: 0;
+  padding-top: 0;
+  border-top: 0;
+  color: var(--dark);
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.sticker-category-header span {
+  color: var(--darkgray);
+  font-family: var(--codeFont);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.sticker-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.8rem, 1fr));
+  gap: 0.65rem;
+}
+
+.sticker-preview {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.58rem;
+  border: 1px solid rgba(121, 166, 171, 0.22);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.sticker-preview img {
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: contain;
+}
+
+.sticker-preview figcaption {
+  width: 100%;
+  color: var(--darkgray);
+  font-size: 0.72rem;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.sticker-wall-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.sticker-wall-toolbar button,
+.sticker-upload-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  padding: 0.54rem 0.82rem;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2f6b5b;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sticker-upload-button input {
+  display: none;
+}
+
+.sticker-wall-toolbar button:hover,
+.sticker-upload-button:hover {
+  background: rgba(223, 246, 235, 0.82);
+  border-color: rgba(47, 107, 91, 0.48);
+}
+
+.sticker-stage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-height: 0.5rem;
+}
+
+.sticker-stage-item {
+  display: grid;
+  width: 3.2rem;
+  height: 3.2rem;
+  place-items: center;
+  padding: 0.2rem;
+  border: 1px dashed rgba(121, 166, 171, 0.4);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.76);
+  cursor: pointer;
+}
+
+.sticker-stage-item:hover {
+  background: rgba(255, 248, 223, 0.9);
+}
+
+.sticker-stage-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sticker-wall-board {
+  position: relative;
+  overflow: hidden;
+  min-height: clamp(25rem, 58vh, 42rem);
+  border: 1px solid rgba(121, 166, 171, 0.3);
+  border-radius: 0.65rem;
+  background:
+    radial-gradient(circle at 12px 12px, rgba(47, 107, 91, 0.13) 1.2px, transparent 1.4px),
+    linear-gradient(135deg, rgba(223, 242, 255, 0.82), rgba(255, 248, 223, 0.62)),
+    white;
+  background-size: 28px 28px, auto, auto;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+  touch-action: none;
+}
+
+.sticker-wall-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.sticker-wall-item {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  filter: drop-shadow(0 9px 12px rgba(68, 98, 104, 0.18));
+  transform-origin: center;
+  transition:
+    filter 160ms ease,
+    scale 160ms ease;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.sticker-wall-item:hover,
+.sticker-wall-item.is-dragging {
+  filter: drop-shadow(0 14px 18px rgba(68, 98, 104, 0.24));
+  scale: 1.06;
+}
+
+.sticker-wall-item.is-dragging {
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.sticker-wall-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.calendar-sticker-wall {
+  margin: 1rem 0 2rem;
+}
+
+.calendar-sticker-stage {
+  margin-bottom: 0.65rem;
+}
+
+.calendar-sticker-board {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  touch-action: none;
+}
+
 footer {
   padding-bottom: 2rem;
 }
@@ -743,5 +1032,28 @@ footer {
   .couple-day strong,
   .couple-day em {
     font-size: 0.72rem;
+  }
+
+  .sticker-wall-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sticker-category-header {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .sticker-preview-grid {
+    grid-template-columns: repeat(auto-fill, minmax(4.8rem, 1fr));
+  }
+
+  .sticker-preview img {
+    width: 3.8rem;
+    height: 3.8rem;
+  }
+
+  .sticker-wall-board {
+    min-height: 27rem;
   }
 }

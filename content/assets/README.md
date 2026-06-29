@@ -18,6 +18,7 @@ Recommended folders:
 - `content/assets/decor/`: small decorative images
 - `content/assets/covers/`: note covers or section banners
 - `content/assets/figures/`: diagrams and research figures you are allowed to publish
+- `content/assets/stickers/`: public-safe GIF stickers for the sticker wall
 - `content/private/assets/`: local-only inspiration packs and private references, ignored by Git
 
 Use assets in Markdown like:
