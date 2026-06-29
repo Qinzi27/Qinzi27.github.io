@@ -14,6 +14,16 @@ type PlacedSticker = StickerAsset & {
   rotation: number
 }
 
+type StickerBoardState = {
+  board: HTMLElement
+  controlId: string
+  key: string
+  label: string
+  layer: HTMLElement
+  stickers: PlacedSticker[]
+  storageKey: string
+}
+
 const stickerWallStorageKey = "qinzi27-sticker-wall-v1"
 const maxUploadBytes = 700_000
 
@@ -90,6 +100,7 @@ function renderSticker(
   storageKey: string,
   sticker: PlacedSticker,
   stickers: PlacedSticker[],
+  onStickersChanged?: () => void,
 ) {
   const item = document.createElement("button")
   item.type = "button"
@@ -145,6 +156,7 @@ function renderSticker(
       stickers.splice(index, 1)
       savePlacedStickers(storageKey, stickers)
       item.remove()
+      onStickersChanged?.()
     }
   })
 }
@@ -159,6 +171,27 @@ function getStickerLayer(board: HTMLElement) {
   layer.className = "sticker-wall-layer"
   board.append(layer)
   return layer
+}
+
+function getBoardState(rootStorageKey: string, board: HTMLElement, index: number, totalBoards: number): StickerBoardState {
+  const key = board.dataset.stickerBoardKey || (totalBoards === 1 ? "default" : `board-${index + 1}`)
+  const storageKey = board.dataset.stickerBoardKey ? `${rootStorageKey}:${key}` : rootStorageKey
+  const label = board.dataset.stickerBoardLabel || key
+
+  return {
+    board,
+    controlId: board.dataset.stickerBoardControl || "",
+    key,
+    label,
+    layer: getStickerLayer(board),
+    stickers: readPlacedStickers(storageKey),
+    storageKey,
+  }
+}
+
+function isVisibleBoard(board: HTMLElement) {
+  const rect = board.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0
 }
 
 function getAssetCategory(asset: StickerAsset) {
@@ -226,6 +259,61 @@ function renderCategoryFilter(
   })
 }
 
+function renderMonthPreview(
+  container: HTMLElement | null,
+  states: StickerBoardState[],
+  activeState: StickerBoardState,
+  onSelect: (state: StickerBoardState) => void,
+) {
+  if (!container || states.length <= 1) {
+    return
+  }
+
+  container.innerHTML = ""
+  states.forEach((state) => {
+    const item = document.createElement("button")
+    item.type = "button"
+    item.className = "sticker-month-preview-item"
+    item.setAttribute("aria-pressed", state.key === activeState.key ? "true" : "false")
+
+    if (state.key === activeState.key) {
+      item.classList.add("is-active")
+    }
+
+    const label = document.createElement("span")
+    label.className = "sticker-month-preview-label"
+    label.textContent = state.label
+
+    const count = document.createElement("span")
+    count.className = "sticker-month-preview-count"
+    count.textContent = `${state.stickers.length}张`
+
+    const thumbs = document.createElement("span")
+    thumbs.className = "sticker-month-preview-thumbs"
+    const previewStickers = state.stickers.slice(-3)
+
+    if (previewStickers.length === 0) {
+      const empty = document.createElement("span")
+      empty.className = "sticker-month-preview-empty"
+      empty.textContent = "空"
+      thumbs.append(empty)
+    } else {
+      previewStickers.forEach((sticker) => {
+        const image = document.createElement("img")
+        image.src = sticker.src
+        image.alt = sticker.name
+        image.loading = "lazy"
+        image.decoding = "async"
+        thumbs.append(image)
+      })
+    }
+
+    item.append(label, count, thumbs)
+    item.addEventListener("click", () => onSelect(state))
+    container.append(item)
+  })
+}
+
 function renderUploadStage(
   stage: HTMLElement | null,
   storageKey: string,
@@ -289,7 +377,7 @@ function initStickerWall(root: HTMLElement) {
     return
   }
 
-  const board = root.querySelector<HTMLElement>("[data-sticker-board]")
+  const boards = [...root.querySelectorAll<HTMLElement>("[data-sticker-board]")]
   const addButton = root.querySelector<HTMLButtonElement>("[data-sticker-add]")
   const burstButton = root.querySelector<HTMLButtonElement>("[data-sticker-burst]")
   const clearButton = root.querySelector<HTMLButtonElement>("[data-sticker-clear]")
@@ -297,27 +385,48 @@ function initStickerWall(root: HTMLElement) {
   const uploadInput = root.querySelector<HTMLInputElement>("[data-sticker-upload]")
   const stage = root.querySelector<HTMLElement>("[data-sticker-stage]")
   const categoryFilter = root.querySelector<HTMLElement>("[data-sticker-categories]")
+  const monthPreview = root.querySelector<HTMLElement>("[data-sticker-month-preview]")
   const storageKey = getStorageKey(root)
   const baseAssets = readStickerAssets(root)
   const uploadedAssets = readUploadedAssets(storageKey)
-  const stickers = readPlacedStickers(storageKey)
   let selectedCategory = "all"
 
-  if (!board || !addButton || !burstButton || !clearButton || baseAssets.length === 0) {
+  if (boards.length === 0 || !addButton || !burstButton || !clearButton || baseAssets.length === 0) {
     return
   }
 
-  const stickerBoard = board
-  const stickerLayer = getStickerLayer(stickerBoard)
+  const boardStates = boards.map((board, index) => getBoardState(storageKey, board, index, boards.length))
   root.dataset.stickerInitialized = "true"
-  stickerLayer.innerHTML = ""
-  stickers.forEach((sticker) => renderSticker(stickerLayer, stickerBoard, storageKey, sticker, stickers))
+  boardStates.forEach((state) => {
+    state.layer.innerHTML = ""
+    state.stickers.forEach((sticker) =>
+      renderSticker(state.layer, state.board, state.storageKey, sticker, state.stickers, updateMonthPreview),
+    )
+  })
 
-  function addSticker(asset: StickerAsset, x?: number, y?: number) {
+  function getActiveBoardState() {
+    return boardStates.find((state) => isVisibleBoard(state.board)) ?? boardStates[0]
+  }
+
+  function selectBoardState(state: StickerBoardState) {
+    const control = state.controlId ? document.getElementById(state.controlId) : null
+    if (control instanceof HTMLInputElement && control.type === "radio") {
+      control.checked = true
+      control.dispatchEvent(new Event("change", { bubbles: true }))
+    }
+    updateMonthPreview()
+  }
+
+  function updateMonthPreview() {
+    renderMonthPreview(monthPreview, boardStates, getActiveBoardState(), selectBoardState)
+  }
+
+  function addSticker(asset: StickerAsset, x?: number, y?: number, state = getActiveBoardState()) {
     const sticker = makeSticker(asset, x, y)
-    stickers.push(sticker)
-    renderSticker(stickerLayer, stickerBoard, storageKey, sticker, stickers)
-    savePlacedStickers(storageKey, stickers)
+    state.stickers.push(sticker)
+    renderSticker(state.layer, state.board, state.storageKey, sticker, state.stickers, updateMonthPreview)
+    savePlacedStickers(state.storageKey, state.stickers)
+    updateMonthPreview()
   }
 
   function getAvailableAssets() {
@@ -352,17 +461,18 @@ function initStickerWall(root: HTMLElement) {
     })
   }
 
-  function addRandomSticker(x?: number, y?: number) {
+  function addRandomSticker(x?: number, y?: number, state = getActiveBoardState()) {
     const assets = getAvailableAssets()
     const asset = assets[Math.floor(Math.random() * assets.length)]
     if (!asset) {
       return
     }
 
-    addSticker(asset, x, y)
+    addSticker(asset, x, y, state)
   }
 
   updateCategoryFilter()
+  updateMonthPreview()
   renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter)
   addButton.addEventListener("click", () => addRandomSticker())
 
@@ -373,9 +483,11 @@ function initStickerWall(root: HTMLElement) {
   })
 
   clearButton.addEventListener("click", () => {
-    stickers.splice(0, stickers.length)
-    savePlacedStickers(storageKey, stickers)
-    stickerLayer.innerHTML = ""
+    const state = getActiveBoardState()
+    state.stickers.splice(0, state.stickers.length)
+    savePlacedStickers(state.storageKey, state.stickers)
+    state.layer.innerHTML = ""
+    updateMonthPreview()
   })
 
   clearUploadsButton?.addEventListener("click", () => {
@@ -399,15 +511,21 @@ function initStickerWall(root: HTMLElement) {
     uploadInput.value = ""
   })
 
-  stickerBoard.addEventListener("dblclick", (event) => {
-    if (event.target !== stickerBoard) {
-      return
-    }
+  root.querySelectorAll<HTMLInputElement>(".couple-month-toggle").forEach((control) => {
+    control.addEventListener("change", updateMonthPreview)
+  })
 
-    const rect = stickerBoard.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) / rect.width) * 100
-    const y = ((event.clientY - rect.top) / rect.height) * 100
-    addRandomSticker(x, y)
+  boardStates.forEach((state) => {
+    state.board.addEventListener("dblclick", (event) => {
+      if (event.target !== state.board) {
+        return
+      }
+
+      const rect = state.board.getBoundingClientRect()
+      const x = ((event.clientX - rect.left) / rect.width) * 100
+      const y = ((event.clientY - rect.top) / rect.height) * 100
+      addRandomSticker(x, y, state)
+    })
   })
 }
 

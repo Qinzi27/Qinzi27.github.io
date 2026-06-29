@@ -310,7 +310,7 @@ function makeMonthCalendar(key, entriesByDate) {
   }
 
   return [
-    '<div class="couple-calendar">',
+    `<div class="couple-calendar" data-sticker-board data-sticker-board-key="${escapeHtml(key)}" data-sticker-board-label="${escapeHtml(monthDisplayLabel(key))}" data-sticker-board-control="${monthInputId(key)}">`,
     '  <div class="couple-calendar-top">',
     `    <p>${escapeHtml(title.english)}</p>`,
     `    <h2>${escapeHtml(title.chinese)}</h2>`,
@@ -332,6 +332,11 @@ function makeMonthCalendar(key, entriesByDate) {
 
 function monthInputId(key) {
   return `couple-month-${key}`
+}
+
+function monthDisplayLabel(key) {
+  const [year, month] = key.split("-").map(Number)
+  return `${year}年${month}月`
 }
 
 function makeMonthNav(key, months) {
@@ -391,9 +396,10 @@ function makeMonthBlock(entries, wallStickerFiles) {
     '      <input type="file" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml,image/avif" multiple data-sticker-upload />',
     "    </label>",
     '    <button type="button" data-sticker-clear-uploads>清空暂存</button>',
-    '    <button type="button" data-sticker-clear>清空日历贴纸</button>',
+    '    <button type="button" data-sticker-clear>清空本月贴纸</button>',
     "  </div>",
     '  <div class="sticker-stage calendar-sticker-stage" data-sticker-stage aria-label="Uploaded calendar sticker staging area"></div>',
+    '  <div class="sticker-month-preview" data-sticker-month-preview aria-label="Monthly sticker preview"></div>',
     makeWallAssetScript(wallStickerFiles).replace(/^/gm, "  "),
     '<div class="couple-month-pager">',
     "<style>",
@@ -409,7 +415,7 @@ function makeMonthBlock(entries, wallStickerFiles) {
       return `    <label for="${monthInputId(key)}">${month}月</label>`
     }),
     "  </div>",
-    '  <div class="couple-month-slides calendar-sticker-board" data-sticker-board>',
+    '  <div class="couple-month-slides calendar-sticker-board">',
     ...months.map(
       (key) =>
         [

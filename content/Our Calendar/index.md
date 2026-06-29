@@ -24,9 +24,10 @@ summary: "A private calendar for shared daily moments."
       <input type="file" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml,image/avif" multiple data-sticker-upload />
     </label>
     <button type="button" data-sticker-clear-uploads>清空暂存</button>
-    <button type="button" data-sticker-clear>清空日历贴纸</button>
+    <button type="button" data-sticker-clear>清空本月贴纸</button>
   </div>
   <div class="sticker-stage calendar-sticker-stage" data-sticker-stage aria-label="Uploaded calendar sticker staging area"></div>
+  <div class="sticker-month-preview" data-sticker-month-preview aria-label="Monthly sticker preview"></div>
   <script type="application/json" data-sticker-assets>
   [
     {
@@ -668,14 +669,14 @@ summary: "A private calendar for shared daily moments."
     <label for="couple-month-2026-05">5月</label>
     <label for="couple-month-2026-06">6月</label>
   </div>
-  <div class="couple-month-slides calendar-sticker-board" data-sticker-board>
+  <div class="couple-month-slides calendar-sticker-board">
     <section class="couple-month-slide" data-month="2026-05">
       <div class="couple-month-nav">
         <span class="month-turn is-disabled">上一月</span>
         <strong>2026年5月</strong>
         <label class="month-turn" for="couple-month-2026-06">下一月</label>
       </div>
-      <div class="couple-calendar">
+      <div class="couple-calendar" data-sticker-board data-sticker-board-key="2026-05" data-sticker-board-label="2026年5月" data-sticker-board-control="couple-month-2026-05">
         <div class="couple-calendar-top">
           <p>May 2026</p>
           <h2>2026年5月</h2>
@@ -761,7 +762,7 @@ summary: "A private calendar for shared daily moments."
         <strong>2026年6月</strong>
         <span class="month-turn is-disabled">下一月</span>
       </div>
-      <div class="couple-calendar">
+      <div class="couple-calendar" data-sticker-board data-sticker-board-key="2026-06" data-sticker-board-label="2026年6月" data-sticker-board-control="couple-month-2026-06">
         <div class="couple-calendar-top">
           <p>June 2026</p>
           <h2>2026年6月</h2>

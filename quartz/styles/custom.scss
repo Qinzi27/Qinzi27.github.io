@@ -441,12 +441,14 @@ code {
 }
 
 .couple-calendar {
+  position: relative;
   margin: 0 0 2rem;
   overflow: hidden;
   border: 1px solid rgba(121, 166, 171, 0.32);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 14px 32px rgba(68, 98, 104, 0.1);
+  touch-action: none;
 }
 
 .couple-calendar-top {
@@ -747,6 +749,76 @@ code {
   opacity: 0.8;
 }
 
+.sticker-month-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.sticker-month-preview-item {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "label count"
+    "thumbs thumbs";
+  gap: 0.28rem 0.5rem;
+  min-width: 8.5rem;
+  min-height: 4.1rem;
+  padding: 0.52rem 0.62rem;
+  border: 1px solid rgba(121, 166, 171, 0.32);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: #3f5f61;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sticker-month-preview-item:hover {
+  border-color: rgba(47, 107, 91, 0.46);
+  background: rgba(223, 246, 235, 0.74);
+}
+
+.sticker-month-preview-item.is-active,
+.sticker-month-preview-item[aria-pressed="true"] {
+  border-color: #2f6b5b;
+  background: rgba(223, 246, 235, 0.9);
+}
+
+.sticker-month-preview-label {
+  grid-area: label;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.sticker-month-preview-count {
+  grid-area: count;
+  justify-self: end;
+  color: var(--darkgray);
+  font-family: var(--codeFont);
+  font-size: 0.76rem;
+}
+
+.sticker-month-preview-thumbs {
+  grid-area: thumbs;
+  display: flex;
+  gap: 0.2rem;
+  min-height: 1.55rem;
+  align-items: center;
+}
+
+.sticker-month-preview-thumbs img {
+  width: 1.45rem;
+  height: 1.45rem;
+  object-fit: contain;
+}
+
+.sticker-month-preview-empty {
+  color: color-mix(in srgb, var(--darkgray) 72%, white);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .sticker-category-gallery {
   display: grid;
   gap: 1.15rem;
@@ -1037,6 +1109,15 @@ footer {
   .sticker-wall-toolbar {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .sticker-month-preview {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sticker-month-preview-item {
+    min-width: 0;
   }
 
   .sticker-category-header {
