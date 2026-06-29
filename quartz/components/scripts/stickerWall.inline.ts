@@ -83,6 +83,18 @@ function randomBetween(min: number, max: number) {
   return Math.random() * (max - min) + min
 }
 
+function stickerTransform(rotation: number) {
+  return `translate(-50%, -50%) rotate(${rotation}deg)`
+}
+
+function moveStickerToPointer(sticker: PlacedSticker, item: HTMLElement, bounds: HTMLElement, event: PointerEvent) {
+  const rect = bounds.getBoundingClientRect()
+  sticker.x = Math.max(4, Math.min(96, ((event.clientX - rect.left) / rect.width) * 100))
+  sticker.y = Math.max(4, Math.min(96, ((event.clientY - rect.top) / rect.height) * 100))
+  item.style.left = `${sticker.x}%`
+  item.style.top = `${sticker.y}%`
+}
+
 function makeSticker(asset: StickerAsset, x?: number, y?: number): PlacedSticker {
   return {
     ...asset,
@@ -110,7 +122,7 @@ function renderSticker(
   item.style.left = `${sticker.x}%`
   item.style.top = `${sticker.y}%`
   item.style.width = `${sticker.size}px`
-  item.style.transform = `rotate(${sticker.rotation}deg)`
+  item.style.transform = stickerTransform(sticker.rotation)
 
   const image = document.createElement("img")
   image.src = sticker.src
@@ -123,9 +135,11 @@ function renderSticker(
   let activePointer: number | null = null
 
   item.addEventListener("pointerdown", (event) => {
+    event.preventDefault()
     activePointer = event.pointerId
     item.setPointerCapture(activePointer)
     item.classList.add("is-dragging")
+    moveStickerToPointer(sticker, item, bounds, event)
   })
 
   item.addEventListener("pointermove", (event) => {
@@ -133,11 +147,8 @@ function renderSticker(
       return
     }
 
-    const rect = bounds.getBoundingClientRect()
-    sticker.x = Math.max(0, Math.min(92, ((event.clientX - rect.left) / rect.width) * 100))
-    sticker.y = Math.max(0, Math.min(88, ((event.clientY - rect.top) / rect.height) * 100))
-    item.style.left = `${sticker.x}%`
-    item.style.top = `${sticker.y}%`
+    event.preventDefault()
+    moveStickerToPointer(sticker, item, bounds, event)
   })
 
   item.addEventListener("pointerup", (event) => {
@@ -145,6 +156,7 @@ function renderSticker(
       return
     }
 
+    event.preventDefault()
     activePointer = null
     item.classList.remove("is-dragging")
     savePlacedStickers(storageKey, stickers)

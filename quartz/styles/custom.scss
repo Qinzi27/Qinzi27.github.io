@@ -987,6 +987,7 @@ code {
   cursor: grab;
   filter: drop-shadow(0 9px 12px rgba(68, 98, 104, 0.18));
   transform-origin: center;
+  touch-action: none;
   transition:
     filter 160ms ease,
     scale 160ms ease;
