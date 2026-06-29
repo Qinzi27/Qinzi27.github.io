@@ -32,6 +32,7 @@ Welcome. This is a long-term Markdown garden for academic learning, research rea
   <a class="garden-card" href="./research--and--papers/"><span>04</span><strong>Research & Papers</strong><em>paper reading and research questions</em></a>
   <a class="garden-card" href="./life-journal/"><span>05</span><strong>Life Journal</strong><em>weekly reviews and selected life writing</em></a>
   <a class="garden-card" href="./projects/"><span>06</span><strong>Projects</strong><em>experiments and PhD preparation</em></a>
+  <a class="garden-card" href="./our-calendar/"><span>❤</span><strong>我们的小日历</strong><em>输入密码后查看日常记录</em></a>
 </div>
 
 ## Publishing rule

@@ -7,7 +7,7 @@ status: "active"
 publish: true
 privacy: "protected"
 passwordEnv: "PARENT_CALENDAR_PASSWORD"
-unlisted: true
+unlisted: false
 summary: "A private calendar for shared daily moments."
 ---
 
