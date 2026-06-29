@@ -158,6 +158,27 @@ Supported formats: PNG, JPG, WebP, GIF, SVG, and AVIF.
 
 The build runs `npm run generate-calendar`, scans that folder, and updates the sticker area on the protected calendar page.
 
+## Shared Visitor Interactions
+
+Shared stickers and per-day calendar comments are stored by a Cloudflare Worker with D1:
+
+```text
+workers/interactions/
+```
+
+Useful commands:
+
+```powershell
+npm.cmd run interactions:migrate
+npm.cmd run interactions:deploy
+```
+
+The public site reads the Worker URL from `PUBLIC_INTERACTIONS_API_URL` at build time. If the URL is empty or the Worker is unavailable, sticker placement and comments fall back to local browser storage.
+
+For GitHub Pages deployment, set repository variable `PUBLIC_INTERACTIONS_API_URL` to the deployed Worker URL, for example `https://qinzi27-interactions.<your-subdomain>.workers.dev`.
+
+The Worker secret `ADMIN_TOKEN` is for moderation endpoints only. Do not commit it. A local copy can be kept under `content/private/`.
+
 ## Build
 
 ```bash

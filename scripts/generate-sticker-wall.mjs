@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import crypto from "node:crypto"
 import { slugifyFilePath } from "@quartz-community/utils"
 
 const STICKER_DIR = path.resolve("content/assets/stickers")
@@ -72,6 +73,33 @@ function walk(dir, files = []) {
   }
 
   return files
+}
+
+function imageFileHash(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex")
+}
+
+function imageFilePriority(filePath) {
+  const relative = normalizePath(path.relative(STICKER_DIR, filePath))
+  return relative.includes("/animated_gif/") ? 0 : 1
+}
+
+function dedupeImageFiles(files) {
+  const selected = new Map()
+
+  for (const filePath of files) {
+    const key = `${packFromFile(filePath)}:${imageFileHash(filePath)}`
+    const current = selected.get(key)
+    if (
+      !current ||
+      imageFilePriority(filePath) < imageFilePriority(current) ||
+      (imageFilePriority(filePath) === imageFilePriority(current) && filePath.localeCompare(current) < 0)
+    ) {
+      selected.set(key, filePath)
+    }
+  }
+
+  return [...selected.values()].sort((a, b) => a.localeCompare(b))
 }
 
 function makeAsset(filePath) {
@@ -186,7 +214,7 @@ function makeCategoryPage(assets) {
 }
 
 function generateStickerWall() {
-  const imageFiles = walk(STICKER_DIR).sort((a, b) => a.localeCompare(b))
+  const imageFiles = dedupeImageFiles(walk(STICKER_DIR))
 
   // Keep the Markdown page declarative: the script scans asset folders and refreshes
   // only the marked JSON block, so adding a new sticker pack does not require hand edits.

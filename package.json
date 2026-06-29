@@ -18,6 +18,8 @@
     "daily-gui": "node ./scripts/daily-log-gui.mjs",
     "generate-sticker-wall": "node ./scripts/generate-sticker-wall.mjs",
     "generate-sticker-wall:watch": "node ./scripts/generate-sticker-wall.mjs --watch",
+    "interactions:migrate": "npx wrangler d1 migrations apply qinzi27-interactions --remote --config workers/interactions/wrangler.toml",
+    "interactions:deploy": "npx wrangler deploy --config workers/interactions/wrangler.toml",
     "prepublish-check": "node ./scripts/prepublish-check.mjs",
     "install-plugins": "node ./quartz/bootstrap-cli.mjs plugin install --from-config",
     "build": "npm run generate-calendar && npm run generate-sticker-wall && npm run prepublish-check && npm run install-plugins && node ./quartz/bootstrap-cli.mjs build",

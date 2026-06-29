@@ -1,11 +1,51 @@
-type CalendarCommentMap = Record<string, string>
+type CalendarComment = {
+  id: string
+  date: string
+  text: string
+  visitorId?: string
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+type CalendarCommentMap = Record<string, CalendarComment[]>
+
+type CalendarInteractionsClient = {
+  enabled: boolean
+  visitorId: () => string
+  listComments: (params: Record<string, string>) => Promise<CalendarComment[]>
+  saveComment: (payload: Record<string, unknown>) => Promise<CalendarComment | null>
+}
 
 const calendarCommentStorageKey = "qinzi27-calendar-day-comments-v1"
 
 function readCalendarComments(): CalendarCommentMap {
   try {
-    const parsed = JSON.parse(localStorage.getItem(calendarCommentStorageKey) ?? "{}") as CalendarCommentMap
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {}
+    const parsed = JSON.parse(localStorage.getItem(calendarCommentStorageKey) ?? "{}") as Record<
+      string,
+      string | CalendarComment[]
+    >
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {}
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).map(([date, value]) => [
+        date,
+        Array.isArray(value)
+          ? value
+          : String(value || "").trim()
+            ? [
+                {
+                  id: `local-${date}`,
+                  date,
+                  text: String(value),
+                  visitorId: getCalendarVisitorId() || "local",
+                },
+              ]
+            : [],
+      ]),
+    )
   } catch {
     return {}
   }
@@ -13,6 +53,14 @@ function readCalendarComments(): CalendarCommentMap {
 
 function saveCalendarComments(comments: CalendarCommentMap) {
   localStorage.setItem(calendarCommentStorageKey, JSON.stringify(comments))
+}
+
+function getCalendarInteractionsClient() {
+  return (window as Window & { QinziInteractions?: CalendarInteractionsClient }).QinziInteractions
+}
+
+function getCalendarVisitorId() {
+  return getCalendarInteractionsClient()?.visitorId() ?? "local"
 }
 
 function dateLabel(date: string) {
@@ -49,8 +97,12 @@ function makeCommentEditor() {
   const textarea = document.createElement("textarea")
   textarea.className = "calendar-comment-text"
   textarea.dataset.calendarCommentText = ""
-  textarea.placeholder = "写给这一天"
+  textarea.placeholder = "写给这一天；保存后其他访客也能看到"
   textarea.rows = 7
+
+  const list = document.createElement("div")
+  list.className = "calendar-comment-list"
+  list.dataset.calendarCommentList = ""
 
   const actions = document.createElement("div")
   actions.className = "calendar-comment-actions"
@@ -71,29 +123,61 @@ function makeCommentEditor() {
   closeButton.textContent = "关闭"
 
   actions.append(saveButton, deleteButton, closeButton)
-  card.append(title, textarea, actions)
+  card.append(title, list, textarea, actions)
   editor.append(backdrop, card)
   return editor
 }
 
 function setEditorDate(editor: HTMLElement, date: string, comments: CalendarCommentMap) {
   const title = editor.querySelector<HTMLElement>(".calendar-comment-title")
+  const list = editor.querySelector<HTMLElement>("[data-calendar-comment-list]")
   const textarea = editor.querySelector<HTMLTextAreaElement>("[data-calendar-comment-text]")
+  const dateComments = comments[date] ?? []
+  const visitorId = getCalendarVisitorId()
+  const ownComment = dateComments.find((comment) => comment.visitorId === visitorId)
   editor.dataset.calendarCommentDate = date
 
   if (title) {
-    title.textContent = dateLabel(date)
+    title.textContent = dateComments.length > 0 ? `${dateLabel(date)} · ${dateComments.length}条` : dateLabel(date)
+  }
+
+  if (list) {
+    list.innerHTML = ""
+    if (dateComments.length === 0) {
+      const empty = document.createElement("p")
+      empty.className = "calendar-comment-empty"
+      empty.textContent = "还没有共享留言。"
+      list.append(empty)
+    } else {
+      dateComments.forEach((comment) => {
+        const item = document.createElement("article")
+        item.className = "calendar-comment-item"
+        if (comment.visitorId === visitorId) {
+          item.classList.add("is-mine")
+        }
+
+        const text = document.createElement("p")
+        text.textContent = comment.text
+
+        const meta = document.createElement("span")
+        meta.textContent = comment.visitorId === visitorId ? "我写的" : "访客留言"
+
+        item.append(text, meta)
+        list.append(item)
+      })
+    }
   }
 
   if (textarea) {
-    textarea.value = comments[date] ?? ""
+    textarea.value = ownComment?.text ?? ""
   }
 }
 
 function applyCalendarCommentMarkers(root: ParentNode, comments: CalendarCommentMap) {
   root.querySelectorAll<HTMLElement>("[data-calendar-day][data-calendar-date]").forEach((day) => {
     const date = day.dataset.calendarDate ?? ""
-    const hasComment = Boolean(comments[date]?.trim())
+    const count = comments[date]?.filter((comment) => comment.text.trim()).length ?? 0
+    const hasComment = count > 0
     const trigger = day.querySelector<HTMLButtonElement>("[data-calendar-comment-open]")
 
     day.classList.toggle("has-comment", hasComment)
@@ -101,10 +185,48 @@ function applyCalendarCommentMarkers(root: ParentNode, comments: CalendarComment
     if (trigger) {
       trigger.setAttribute(
         "aria-label",
-        hasComment ? `编辑 ${dateLabel(date)} 的评论，已有评论` : `编辑 ${dateLabel(date)} 的评论`,
+        hasComment ? `编辑 ${dateLabel(date)} 的评论，已有 ${count} 条评论` : `编辑 ${dateLabel(date)} 的评论`,
       )
     }
   })
+}
+
+function dateRange(root: ParentNode) {
+  const dates = [...root.querySelectorAll<HTMLElement>("[data-calendar-day][data-calendar-date]")]
+    .map((day) => day.dataset.calendarDate ?? "")
+    .filter(Boolean)
+    .sort()
+
+  return {
+    from: dates[0] ?? "",
+    to: dates[dates.length - 1] ?? "",
+  }
+}
+
+function groupComments(comments: CalendarComment[]) {
+  const grouped: CalendarCommentMap = {}
+  comments.forEach((comment) => {
+    if (!grouped[comment.date]) {
+      grouped[comment.date] = []
+    }
+    grouped[comment.date].push(comment)
+  })
+  return grouped
+}
+
+async function readRemoteComments(root: ParentNode) {
+  const client = getCalendarInteractionsClient()
+  if (!client?.enabled) {
+    return null
+  }
+
+  const range = dateRange(root)
+  if (!range.from || !range.to) {
+    return null
+  }
+
+  const comments = await client.listComments(range)
+  return groupComments(comments)
 }
 
 function initCalendarComments() {
@@ -123,6 +245,16 @@ function initCalendarComments() {
 
   let comments = readCalendarComments()
   applyCalendarCommentMarkers(root, comments)
+  void readRemoteComments(root)
+    .then((remoteComments) => {
+      if (!remoteComments) {
+        return
+      }
+      comments = remoteComments
+      saveCalendarComments(comments)
+      applyCalendarCommentMarkers(root, comments)
+    })
+    .catch((error) => console.warn("[CalendarComments] Failed to load shared comments", error))
 
   const closeEditor = () => {
     editor.hidden = true
@@ -133,6 +265,17 @@ function initCalendarComments() {
     setEditorDate(editor, date, comments)
     editor.hidden = false
     editor.querySelector<HTMLTextAreaElement>("[data-calendar-comment-text]")?.focus()
+  }
+
+  const refreshComments = async () => {
+    const remoteComments = await readRemoteComments(root)
+    if (remoteComments) {
+      comments = remoteComments
+      saveCalendarComments(comments)
+    } else {
+      comments = readCalendarComments()
+    }
+    applyCalendarCommentMarkers(root, comments)
   }
 
   root.addEventListener("click", (event) => {
@@ -167,16 +310,33 @@ function initCalendarComments() {
       }
 
       const value = textarea.value.trim()
-      comments = readCalendarComments()
+      const client = getCalendarInteractionsClient()
 
-      if (value) {
-        comments[date] = value
+      if (client?.enabled) {
+        client
+          .saveComment({ date, text: value })
+          .then(refreshComments)
+          .catch((error: unknown) => {
+            console.warn("[CalendarComments] Failed to save shared comment", error)
+          })
       } else {
-        delete comments[date]
+        comments = readCalendarComments()
+        if (value) {
+          comments[date] = [
+            {
+              id: `local-${date}`,
+              date,
+              text: value,
+              visitorId: getCalendarVisitorId(),
+            },
+          ]
+        } else {
+          delete comments[date]
+        }
+        saveCalendarComments(comments)
+        applyCalendarCommentMarkers(root, comments)
       }
 
-      saveCalendarComments(comments)
-      applyCalendarCommentMarkers(root, comments)
       closeEditor()
       return
     }
@@ -188,10 +348,20 @@ function initCalendarComments() {
         return
       }
 
-      comments = readCalendarComments()
-      delete comments[date]
-      saveCalendarComments(comments)
-      applyCalendarCommentMarkers(root, comments)
+      const client = getCalendarInteractionsClient()
+      if (client?.enabled) {
+        client
+          .saveComment({ date, text: "" })
+          .then(refreshComments)
+          .catch((error: unknown) => {
+            console.warn("[CalendarComments] Failed to delete shared comment", error)
+          })
+      } else {
+        comments = readCalendarComments()
+        delete comments[date]
+        saveCalendarComments(comments)
+        applyCalendarCommentMarkers(root, comments)
+      }
       closeEditor()
     }
   })

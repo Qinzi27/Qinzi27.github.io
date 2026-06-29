@@ -9,6 +9,8 @@ import popoverScript from "../../components/scripts/popover.inline"
 // @ts-ignore
 import calendarCommentsScript from "../../components/scripts/calendarComments.inline"
 // @ts-ignore
+import interactionsClientScript from "../../components/scripts/interactionsClient.inline"
+// @ts-ignore
 import stickerWallScript from "../../components/scripts/stickerWall.inline"
 import baseStyles from "../../styles/base.scss"
 import customStyles from "../../styles/custom.scss"
@@ -87,6 +89,12 @@ async function joinScripts(scripts: string[]): Promise<string> {
 
 function addGlobalPageResources(ctx: BuildCtx, componentResources: ComponentResources) {
   const cfg = ctx.cfg.configuration
+  const interactionsApiBase = process.env.PUBLIC_INTERACTIONS_API_URL ?? ""
+
+  componentResources.beforeDOMLoaded.push(`
+    window.QINZI_INTERACTIONS_API_BASE = ${JSON.stringify(interactionsApiBase)};
+  `)
+  componentResources.beforeDOMLoaded.push(interactionsClientScript)
 
   // popovers
   if (cfg.enablePopovers) {

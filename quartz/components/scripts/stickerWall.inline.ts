@@ -12,6 +12,9 @@ type PlacedSticker = StickerAsset & {
   y: number
   size: number
   rotation: number
+  remote?: boolean
+  status?: string
+  visitorId?: string
 }
 
 type StickerBoardState = {
@@ -22,6 +25,15 @@ type StickerBoardState = {
   layer: HTMLElement
   stickers: PlacedSticker[]
   storageKey: string
+}
+
+type StickerInteractionsClient = {
+  enabled: boolean
+  visitorId: () => string
+  listStickers: (boardKey: string) => Promise<PlacedSticker[]>
+  createSticker: (payload: Record<string, unknown>) => Promise<PlacedSticker | null>
+  updateSticker: (id: string, payload: Record<string, unknown>) => Promise<PlacedSticker | null>
+  deleteSticker: (id: string) => Promise<void>
 }
 
 const stickerWallStorageKey = "qinzi27-sticker-wall-v1"
@@ -79,6 +91,23 @@ function saveUploadedAssets(storageKey: string, assets: StickerAsset[]) {
   localStorage.setItem(getUploadStorageKey(storageKey), JSON.stringify(assets))
 }
 
+function getStickerInteractionsClient() {
+  return (window as Window & { QinziInteractions?: StickerInteractionsClient }).QinziInteractions
+}
+
+function getStickerVisitorId() {
+  return getStickerInteractionsClient()?.visitorId() ?? ""
+}
+
+function canShareAsset(asset: StickerAsset) {
+  return asset.src.startsWith("/assets/stickers/") || asset.src.startsWith("/assets/couple-calendar-stickers/")
+}
+
+function canEditSticker(sticker: PlacedSticker) {
+  const visitorId = getStickerVisitorId()
+  return !sticker.visitorId || !visitorId || sticker.visitorId === visitorId
+}
+
 function randomBetween(min: number, max: number) {
   return Math.random() * (max - min) + min
 }
@@ -103,6 +132,45 @@ function makeSticker(asset: StickerAsset, x?: number, y?: number): PlacedSticker
     y: y ?? randomBetween(8, 72),
     size: randomBetween(66, 112),
     rotation: randomBetween(-12, 12),
+    visitorId: getStickerVisitorId() || undefined,
+  }
+}
+
+function remoteStickerPayload(state: StickerBoardState, sticker: PlacedSticker) {
+  return {
+    id: sticker.id,
+    boardKey: state.key,
+    boardLabel: state.label,
+    storageKey: state.storageKey,
+    asset: {
+      name: sticker.name,
+      src: sticker.src,
+      category: sticker.category,
+      categoryLabel: sticker.categoryLabel,
+      pack: sticker.pack,
+    },
+    x: sticker.x,
+    y: sticker.y,
+    size: sticker.size,
+    rotation: sticker.rotation,
+  }
+}
+
+function normalizeRemoteSticker(sticker: PlacedSticker): PlacedSticker {
+  return {
+    name: sticker.name,
+    src: sticker.src,
+    category: sticker.category || undefined,
+    categoryLabel: sticker.categoryLabel || undefined,
+    pack: sticker.pack || undefined,
+    id: sticker.id,
+    x: sticker.x,
+    y: sticker.y,
+    size: sticker.size,
+    rotation: sticker.rotation,
+    visitorId: sticker.visitorId,
+    status: sticker.status,
+    remote: true,
   }
 }
 
@@ -113,12 +181,16 @@ function renderSticker(
   sticker: PlacedSticker,
   stickers: PlacedSticker[],
   onStickersChanged?: () => void,
+  onStickerMoved?: (sticker: PlacedSticker) => void,
+  onStickerDeleted?: (sticker: PlacedSticker) => void,
 ) {
   const item = document.createElement("button")
   item.type = "button"
   item.className = "sticker-wall-item"
+  item.classList.toggle("is-readonly", !canEditSticker(sticker))
   item.dataset.stickerId = sticker.id
   item.ariaLabel = sticker.name
+  item.title = canEditSticker(sticker) ? sticker.name : "只能移动或删除自己贴的贴纸"
   item.style.left = `${sticker.x}%`
   item.style.top = `${sticker.y}%`
   item.style.width = `${sticker.size}px`
@@ -135,6 +207,10 @@ function renderSticker(
   let activePointer: number | null = null
 
   item.addEventListener("pointerdown", (event) => {
+    if (!canEditSticker(sticker)) {
+      return
+    }
+
     event.preventDefault()
     activePointer = event.pointerId
     item.setPointerCapture(activePointer)
@@ -160,14 +236,20 @@ function renderSticker(
     activePointer = null
     item.classList.remove("is-dragging")
     savePlacedStickers(storageKey, stickers)
+    onStickerMoved?.(sticker)
   })
 
   item.addEventListener("dblclick", () => {
+    if (!canEditSticker(sticker)) {
+      return
+    }
+
     const index = stickers.findIndex((current) => current.id === sticker.id)
     if (index >= 0) {
       stickers.splice(index, 1)
       savePlacedStickers(storageKey, stickers)
       item.remove()
+      onStickerDeleted?.(sticker)
       onStickersChanged?.()
     }
   })
@@ -411,9 +493,7 @@ function initStickerWall(root: HTMLElement) {
   root.dataset.stickerInitialized = "true"
   boardStates.forEach((state) => {
     state.layer.innerHTML = ""
-    state.stickers.forEach((sticker) =>
-      renderSticker(state.layer, state.board, state.storageKey, sticker, state.stickers, updateMonthPreview),
-    )
+    state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
   })
 
   function getActiveBoardState() {
@@ -433,12 +513,90 @@ function initStickerWall(root: HTMLElement) {
     renderMonthPreview(monthPreview, boardStates, getActiveBoardState(), selectBoardState)
   }
 
+  function renderStateSticker(state: StickerBoardState, sticker: PlacedSticker) {
+    renderSticker(
+      state.layer,
+      state.board,
+      state.storageKey,
+      sticker,
+      state.stickers,
+      updateMonthPreview,
+      (changed) => syncRemoteSticker(state, changed),
+      (deleted) => deleteRemoteSticker(deleted),
+    )
+  }
+
+  function syncLocalState(state: StickerBoardState) {
+    savePlacedStickers(state.storageKey, state.stickers)
+    updateMonthPreview()
+  }
+
+  function syncRemoteSticker(state: StickerBoardState, sticker: PlacedSticker) {
+    syncLocalState(state)
+    const client = getStickerInteractionsClient()
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker)) {
+      return
+    }
+
+    client.updateSticker(sticker.id, remoteStickerPayload(state, sticker)).catch((error) => {
+      console.warn("[StickerWall] Failed to update shared sticker", error)
+    })
+  }
+
+  function deleteRemoteSticker(sticker: PlacedSticker) {
+    const client = getStickerInteractionsClient()
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker)) {
+      return
+    }
+
+    client.deleteSticker(sticker.id).catch((error) => {
+      console.warn("[StickerWall] Failed to delete shared sticker", error)
+    })
+  }
+
+  function replaceStateStickers(state: StickerBoardState, nextStickers: PlacedSticker[]) {
+    state.stickers.splice(0, state.stickers.length, ...nextStickers)
+    state.layer.innerHTML = ""
+    state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
+    syncLocalState(state)
+  }
+
+  async function loadRemoteStickers(state: StickerBoardState) {
+    const client = getStickerInteractionsClient()
+    if (!client?.enabled) {
+      return
+    }
+
+    try {
+      const remoteStickers = await client.listStickers(state.key)
+      replaceStateStickers(state, remoteStickers.map(normalizeRemoteSticker))
+    } catch (error) {
+      console.warn("[StickerWall] Failed to load shared stickers", error)
+    }
+  }
+
   function addSticker(asset: StickerAsset, x?: number, y?: number, state = getActiveBoardState()) {
     const sticker = makeSticker(asset, x, y)
     state.stickers.push(sticker)
-    renderSticker(state.layer, state.board, state.storageKey, sticker, state.stickers, updateMonthPreview)
-    savePlacedStickers(state.storageKey, state.stickers)
-    updateMonthPreview()
+    renderStateSticker(state, sticker)
+    syncLocalState(state)
+
+    const client = getStickerInteractionsClient()
+    if (client?.enabled && canShareAsset(asset)) {
+      sticker.remote = true
+      client
+        .createSticker(remoteStickerPayload(state, sticker))
+        .then((remoteSticker) => {
+          if (remoteSticker) {
+            Object.assign(sticker, normalizeRemoteSticker(remoteSticker))
+            syncLocalState(state)
+          }
+        })
+        .catch((error) => {
+          sticker.remote = false
+          console.warn("[StickerWall] Failed to create shared sticker", error)
+        })
+    }
   }
 
   function getAvailableAssets() {
@@ -486,6 +644,9 @@ function initStickerWall(root: HTMLElement) {
   updateCategoryFilter()
   updateMonthPreview()
   renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter)
+  boardStates.forEach((state) => {
+    void loadRemoteStickers(state)
+  })
   addButton.addEventListener("click", () => addRandomSticker())
 
   burstButton.addEventListener("click", () => {
@@ -496,10 +657,10 @@ function initStickerWall(root: HTMLElement) {
 
   clearButton.addEventListener("click", () => {
     const state = getActiveBoardState()
-    state.stickers.splice(0, state.stickers.length)
-    savePlacedStickers(state.storageKey, state.stickers)
-    state.layer.innerHTML = ""
-    updateMonthPreview()
+    const removed = state.stickers.filter((sticker) => canEditSticker(sticker))
+    const kept = state.stickers.filter((sticker) => !canEditSticker(sticker))
+    replaceStateStickers(state, kept)
+    removed.forEach(deleteRemoteSticker)
   })
 
   clearUploadsButton?.addEventListener("click", () => {

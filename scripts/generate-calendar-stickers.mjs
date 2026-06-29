@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import crypto from "node:crypto"
 import { slugifyFilePath } from "@quartz-community/utils"
 
 const STICKER_DIR = path.resolve("content/assets/couple-calendar-stickers")
@@ -94,6 +95,33 @@ function titleFromSlug(slug) {
 function wallStickerPack(filePath) {
   const relative = toPosix(path.relative(WALL_STICKER_DIR, filePath))
   return relative.split("/")[0] || "uncategorized"
+}
+
+function imageFileHash(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex")
+}
+
+function wallStickerPriority(filePath) {
+  const relative = toPosix(path.relative(WALL_STICKER_DIR, filePath))
+  return relative.includes("/animated_gif/") ? 0 : 1
+}
+
+function dedupeWallStickerFiles(files) {
+  const selected = new Map()
+
+  for (const filePath of files) {
+    const key = `${wallStickerPack(filePath)}:${imageFileHash(filePath)}`
+    const current = selected.get(key)
+    if (
+      !current ||
+      wallStickerPriority(filePath) < wallStickerPriority(current) ||
+      (wallStickerPriority(filePath) === wallStickerPriority(current) && filePath.localeCompare(current) < 0)
+    ) {
+      selected.set(key, filePath)
+    }
+  }
+
+  return [...selected.values()].sort((a, b) => a.localeCompare(b, "zh-CN"))
 }
 
 function wallStickerPackLabel(pack) {
@@ -456,7 +484,7 @@ function makeMonthBlock(entries, wallStickerFiles) {
     '      <input type="file" accept="image/gif,image/png,image/jpeg,image/webp,image/svg+xml,image/avif" multiple data-sticker-upload />',
     "    </label>",
     '    <button type="button" data-sticker-clear-uploads>清空暂存</button>',
-    '    <button type="button" data-sticker-clear>清空本月贴纸</button>',
+    '    <button type="button" data-sticker-clear>清空我的本月贴纸</button>',
     "  </div>",
     '  <div class="sticker-stage calendar-sticker-stage" data-sticker-stage aria-label="Uploaded calendar sticker staging area"></div>',
     '  <div class="sticker-month-preview" data-sticker-month-preview aria-label="Monthly sticker preview"></div>',
@@ -678,7 +706,7 @@ function updateCalendarPage({ monthBlock, entryBlock }) {
 
 ensureDirs()
 const imageFiles = walkImages(STICKER_DIR).sort((a, b) => a.localeCompare(b, "zh-CN"))
-const wallStickerFiles = walkImages(WALL_STICKER_DIR).sort((a, b) => a.localeCompare(b, "zh-CN"))
+const wallStickerFiles = dedupeWallStickerFiles(walkImages(WALL_STICKER_DIR))
 const stickerIndex = makeStickerIndex(imageFiles)
 const entries = parseEntries(readDailyLog())
 

@@ -744,6 +744,47 @@ code {
   outline-offset: 2px;
 }
 
+.calendar-comment-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 13rem;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.calendar-comment-empty {
+  margin: 0;
+  color: var(--darkgray);
+  font-size: 0.9rem;
+}
+
+.calendar-comment-item {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(121, 166, 171, 0.24);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.calendar-comment-item.is-mine {
+  background: rgba(223, 246, 235, 0.72);
+}
+
+.calendar-comment-item p {
+  margin: 0;
+  color: var(--dark);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.calendar-comment-item span {
+  color: var(--darkgray);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .calendar-comment-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1212,6 +1253,15 @@ code {
 .sticker-wall-item.is-dragging {
   cursor: grabbing;
   z-index: 5;
+}
+
+.sticker-wall-item.is-readonly {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.sticker-wall-item.is-readonly:hover {
+  scale: 1;
 }
 
 .sticker-wall-item img {

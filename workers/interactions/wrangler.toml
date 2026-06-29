@@ -1,0 +1,14 @@
+name = "qinzi27-interactions"
+main = "src/index.ts"
+compatibility_date = "2026-06-29"
+workers_dev = true
+
+[vars]
+PUBLIC_WRITE_STATUS = "approved"
+ALLOWED_ORIGINS = "https://qinzi27.github.io,http://localhost:8090,http://127.0.0.1:8090,http://localhost:8092,http://127.0.0.1:8092,http://localhost:8093,http://127.0.0.1:8093"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "qinzi27-interactions"
+database_id = "6424721a-d0e9-4be1-ac91-7813b3732ec9"
+migrations_dir = "migrations"

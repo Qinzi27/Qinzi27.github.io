@@ -2,6 +2,7 @@ node_modules
 .quartz/plugins/
 quartz/.quartz-cache/
 .quartz-v5-source/
+workers/**/.wrangler/
 .npm-cache/
 public/
 out/
