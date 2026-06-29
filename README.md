@@ -125,6 +125,21 @@ Edit daily calendar content here:
 content/Our Calendar/每日记录编辑本.md
 ```
 
+Or use the local pixel-style editor:
+
+```powershell
+npm.cmd run daily-gui
+```
+
+Then open the printed local URL in a browser. The GUI appends or merges entries into `content/Our Calendar/每日记录编辑本.md`, saves a private backup under `content/private/backups/daily-log/`, and can refresh `content/Our Calendar/index.md` after each save.
+
+Use these pages:
+
+- `/`: write a new quick record.
+- `/calendar.html`: inspect previous days, search old short notes, and edit one calendar day at a time.
+
+The same GUI also includes a one-click Git push panel. It shows the current changed files, lets you edit a commit message, then runs the calendar sync, project check, `git add --all`, `git commit`, and `git push`.
+
 Then run:
 
 ```powershell

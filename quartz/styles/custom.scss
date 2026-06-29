@@ -430,6 +430,11 @@ code {
   margin: 0 0 0.75rem;
 }
 
+.couple-month-slide {
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+}
+
 .couple-month-nav strong {
   color: var(--dark);
   font-size: 1.05rem;
@@ -442,6 +447,7 @@ code {
 
 .couple-calendar {
   position: relative;
+  min-width: 56rem;
   margin: 0 0 2rem;
   overflow: hidden;
   border: 1px solid rgba(121, 166, 171, 0.32);
@@ -512,23 +518,83 @@ code {
 }
 
 .couple-day {
+  position: relative;
   display: grid;
   align-content: start;
-  gap: 0.36rem;
-  min-height: 5.8rem;
-  padding: 0.48rem;
+  gap: 0.48rem;
+  min-height: 7.7rem;
+  padding: 0.62rem 2.25rem 0.72rem 0.62rem;
   color: var(--dark);
   text-decoration: none;
 }
 
+.couple-day-link {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.couple-day-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.36rem;
+  flex-wrap: wrap;
+}
+
 .couple-day b {
   display: inline-grid;
+  flex: 0 0 auto;
   width: 1.55rem;
   height: 1.55rem;
   place-items: center;
   border-radius: 999px;
   color: #40504c;
   font-size: 0.84rem;
+}
+
+.calendar-sleep-pill {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  padding: 0.14rem 0.36rem;
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #7c6750;
+  font-family: var(--codeFont);
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-attribute-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.42rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.calendar-attribute-rest {
+  border: 1px solid rgba(47, 107, 91, 0.22);
+  background: rgba(223, 246, 235, 0.9);
+  color: #2f6b5b;
+}
+
+.calendar-attribute-note {
+  border: 1px solid rgba(155, 107, 119, 0.22);
+  background: rgba(255, 232, 239, 0.72);
+  color: #8b5360;
 }
 
 .couple-day strong,
@@ -543,6 +609,13 @@ code {
   font-size: 0.84rem;
 }
 
+.calendar-whisper-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 .couple-day em {
   color: #9b6b77;
   font-size: 0.78rem;
@@ -555,10 +628,144 @@ code {
     white;
 }
 
+.couple-day.is-rest-day {
+  background:
+    linear-gradient(180deg, rgba(223, 246, 235, 0.78), rgba(255, 255, 255, 0.9)),
+    white;
+}
+
 .couple-day.has-note:hover {
   background:
     linear-gradient(180deg, rgba(223, 242, 255, 0.78), rgba(255, 255, 255, 0.9)),
     white;
+}
+
+.calendar-comment-trigger {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: inline-grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2f6b5b;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendar-comment-trigger:hover {
+  border-color: rgba(47, 107, 91, 0.54);
+  background: rgba(223, 246, 235, 0.94);
+}
+
+.calendar-comment-dot {
+  position: absolute;
+  top: -0.12rem;
+  right: -0.12rem;
+  display: none;
+  width: 0.54rem;
+  height: 0.54rem;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: #d43a32;
+  box-shadow: 0 2px 6px rgba(126, 35, 31, 0.28);
+}
+
+.couple-day.has-comment .calendar-comment-dot {
+  display: block;
+}
+
+.calendar-comment-editor[hidden] {
+  display: none;
+}
+
+.calendar-comment-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.calendar-comment-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(23, 24, 22, 0.34);
+  cursor: pointer;
+}
+
+.calendar-comment-card {
+  position: relative;
+  display: grid;
+  gap: 0.75rem;
+  width: min(92vw, 28rem);
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid rgba(121, 166, 171, 0.32);
+  border-radius: 0.5rem;
+  background: var(--light);
+  box-shadow: 0 22px 58px rgba(23, 24, 22, 0.2);
+}
+
+.calendar-comment-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--dark);
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.calendar-comment-text {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--dark);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.calendar-comment-text:focus {
+  border-color: #2f6b5b;
+  outline: 2px solid rgba(47, 107, 91, 0.16);
+  outline-offset: 2px;
+}
+
+.calendar-comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+
+.calendar-comment-actions button {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.82rem;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2f6b5b;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.calendar-comment-actions button:hover {
+  border-color: rgba(47, 107, 91, 0.48);
+  background: rgba(223, 246, 235, 0.82);
 }
 
 .couple-day.today b {
@@ -629,12 +836,13 @@ code {
 .sleep-entry {
   display: inline-flex;
   align-items: center;
-  margin: 0.25rem 0 1.2rem;
-  padding: 0.7rem 0.9rem;
+  margin: 0.15rem 0 0.75rem;
+  padding: 0.38rem 0.58rem;
   border: 1px solid rgba(121, 166, 171, 0.22);
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.74);
   color: #3f5f61;
+  font-size: 0.86rem;
   font-weight: 700;
 }
 
@@ -1097,9 +1305,30 @@ footer {
     font-size: 0.92rem;
   }
 
+  .couple-calendar {
+    min-width: 52rem;
+  }
+
   .couple-day {
-    min-height: 4.45rem;
-    padding: 0.34rem;
+    min-height: 6.4rem;
+    padding: 0.42rem 1.82rem 0.48rem 0.42rem;
+  }
+
+  .calendar-comment-trigger {
+    top: 0.3rem;
+    right: 0.3rem;
+    width: 1.32rem;
+    height: 1.32rem;
+  }
+
+  .calendar-sleep-pill {
+    max-width: 4.5rem;
+    font-size: 0.62rem;
+  }
+
+  .calendar-attribute-chip {
+    padding: 0.12rem 0.32rem;
+    font-size: 0.62rem;
   }
 
   .couple-day strong,

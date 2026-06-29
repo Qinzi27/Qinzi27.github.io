@@ -225,11 +225,11 @@ function parseEntries(source) {
     const sections = parseSubsections(sectionBlock)
     const sleep = meta.sleep || meta.睡眠 || meta.睡着 || ""
     const notes = firstNonEmpty([sections["碎碎念"], sections["小碎念"], meta.notes, meta.碎碎念])
-    const sentence = sleep ? sleepText(sleep) : sections["今天的一句话"] ?? ""
+    const sentence = sections["今天的一句话"] ?? ""
     const together = sections["我们一起"] ?? ""
     const remember = sections["想记住"] ?? ""
     const title =
-      meta.title || meta.标题 || (sleep ? sleepText(sleep) : firstUsefulLine(sentence) || firstUsefulLine(notes) || "有记录")
+      meta.title || meta.标题 || firstUsefulLine(notes) || firstUsefulLine(sentence) || (sleep ? sleepText(sleep) : "有记录")
     const stickers = String(meta.stickers || meta.表情 || "")
       .split(/[,，、]/)
       .map((item) => item.trim().toLowerCase())
@@ -267,23 +267,83 @@ function makeMonthTitle(year, month) {
   }
 }
 
+function calendarAttribute(entry) {
+  if (!entry) {
+    return { key: "empty", label: "" }
+  }
+
+  if (entry.sleep) {
+    return { key: "rest", label: "休息" }
+  }
+
+  return { key: "note", label: "记录" }
+}
+
 function makeCalendarDay(date, day, entry, outside = false) {
   if (outside) {
     return '<span class="couple-day is-empty"></span>'
   }
 
+  const attribute = calendarAttribute(entry)
+  const sleepTime = entry?.sleep ? sleepTimes(entry.sleep).join(" / ") : ""
+  const dataAttributes = [
+    "data-calendar-day",
+    `data-calendar-date="${escapeHtml(date)}"`,
+    `data-calendar-attribute="${escapeHtml(attribute.key)}"`,
+    `data-calendar-has-sleep="${entry?.sleep ? "true" : "false"}"`,
+    sleepTime ? `data-calendar-sleep-time="${escapeHtml(sleepTime)}"` : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const attributeChip = attribute.label
+    ? `    <span class="calendar-attribute-chip calendar-attribute-${escapeHtml(attribute.key)}">${escapeHtml(attribute.label)}</span>`
+    : ""
+  const dayHead = (extra = "") =>
+    [
+      '  <span class="couple-day-head">',
+      `    <b>${day}</b>`,
+      attributeChip,
+      extra,
+      "  </span>",
+    ]
+      .filter(Boolean)
+      .join("\n")
+  const commentButton = [
+    `  <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="${escapeHtml(date)}" aria-label="编辑 ${escapeHtml(date)} 的评论">`,
+    '    <span class="calendar-comment-dot" aria-hidden="true"></span>',
+    '    <span class="calendar-comment-icon" aria-hidden="true">记</span>',
+    "  </button>",
+  ].join("\n")
+
   if (!entry) {
-    return `<span class="couple-day"><b>${day}</b></span>`
+    return [
+      `<div class="couple-day" ${dataAttributes}>`,
+      dayHead(),
+      commentButton,
+      "</div>",
+    ].join("\n")
   }
 
-  const detail = entry.sleep ? "睡眠记录" : entry.mood || entry.tags || entry.weather || "查看这一天"
+  const sleepLabel = sleepTime ? `    <span class="calendar-sleep-pill">${escapeHtml(sleepTime)}</span>` : ""
+  const summary =
+    noteItems(entry.notes).slice(0, 2).join(" / ") ||
+    firstUsefulLine(entry.sentence) ||
+    firstUsefulLine(entry.together) ||
+    firstUsefulLine(entry.remember) ||
+    (!entry.sleep ? entry.title : "")
+  const detail = firstNonEmpty([entry.mood, entry.tags, entry.weather])
   return [
-    `<a class="couple-day has-note" href="#${date}">`,
-    `  <b>${day}</b>`,
-    `  <strong>${escapeHtml(entry.title)}</strong>`,
-    `  <em>${escapeHtml(detail)}</em>`,
-    "</a>",
-  ].join("\n")
+    `<div class="couple-day has-note is-${attribute.key}-day" ${dataAttributes}>`,
+    `  <a class="couple-day-link" href="#${date}">`,
+    dayHead(sleepLabel).replace(/^/gm, "  "),
+    summary ? `    <strong class="calendar-whisper-preview">${escapeHtml(summary)}</strong>` : "",
+    detail ? `    <em>${escapeHtml(detail)}</em>` : "",
+    "  </a>",
+    commentButton,
+    "</div>",
+  ]
+    .filter(Boolean)
+    .join("\n")
 }
 
 function makeMonthCalendar(key, entriesByDate) {
@@ -592,11 +652,27 @@ function replaceMarkedBlock(source, startMarker, endMarker, nextBlock) {
   )
 }
 
-function updateCalendarPage({ monthBlock, stickerBlock, entryBlock }) {
+function removeCalendarStickerSection(source) {
+  const start = source.indexOf(STICKER_START_MARKER)
+  const end = source.indexOf(STICKER_END_MARKER, start)
+
+  if (start === -1 || end === -1 || end < start) {
+    return source
+  }
+
+  const before = source.slice(0, start)
+  const sectionHeading = before.match(/\n##\s+表情包装饰\s*\n\s*$/)
+  const sectionStart = sectionHeading ? before.length - sectionHeading[0].length : start
+  const sectionEnd = end + STICKER_END_MARKER.length
+
+  return `${source.slice(0, sectionStart).trimEnd()}\n\n${source.slice(sectionEnd).trimStart()}`
+}
+
+function updateCalendarPage({ monthBlock, entryBlock }) {
   let source = fs.readFileSync(CALENDAR_PAGE, "utf8")
   source = replaceMarkedBlock(source, MONTH_START_MARKER, MONTH_END_MARKER, monthBlock)
-  source = replaceMarkedBlock(source, STICKER_START_MARKER, STICKER_END_MARKER, stickerBlock)
   source = replaceMarkedBlock(source, ENTRY_START_MARKER, ENTRY_END_MARKER, entryBlock)
+  source = removeCalendarStickerSection(source)
   fs.writeFileSync(CALENDAR_PAGE, source, "utf8")
 }
 
@@ -608,7 +684,6 @@ const entries = parseEntries(readDailyLog())
 
 updateCalendarPage({
   monthBlock: makeMonthBlock(entries, wallStickerFiles),
-  stickerBlock: makeStickerBlock(imageFiles),
   entryBlock: makeEntryBlock(entries, stickerIndex),
 })
 

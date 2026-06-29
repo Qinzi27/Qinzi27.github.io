@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>日历检查编辑器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="pixel-moon" aria-hidden="true">
+          <span></span>
+        </div>
+        <div>
+          <p class="kicker">Calendar Review</p>
+          <h1>日历检查编辑器</h1>
+          <nav class="page-links" aria-label="页面切换">
+            <a href="/">写新记录</a>
+            <a href="/calendar.html" aria-current="page">检查日历</a>
+          </nav>
+        </div>
+        <div class="status-chip" id="calendar-status">连接中</div>
+      </header>
+
+      <section class="calendar-workspace" aria-label="日历检查和编辑">
+        <section class="panel calendar-panel">
+          <div class="panel-title">
+            <div>
+              <p class="kicker">Days</p>
+              <h2>按天检查</h2>
+            </div>
+            <button type="button" class="ghost-button" id="calendar-refresh">刷新</button>
+          </div>
+
+          <div class="month-controls" id="month-controls"></div>
+          <div class="mini-calendar" id="mini-calendar"></div>
+
+          <label class="field search-field">
+            <span>搜索旧文字</span>
+            <input id="entry-search" type="search" placeholder="输入日期、标题、碎碎念关键词" />
+          </label>
+          <div class="search-results" id="search-results"></div>
+        </section>
+
+        <section class="panel day-editor-panel">
+          <div class="panel-title">
+            <div>
+              <p class="kicker">Edit Day</p>
+              <h2 id="day-title">选择一天</h2>
+            </div>
+            <button type="button" class="ghost-button" id="today-button">今天</button>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>日期</span>
+              <input id="calendar-date" type="date" required />
+            </label>
+            <label class="field">
+              <span>休息/睡着时间</span>
+              <input id="calendar-sleep" type="text" placeholder="01:20左右，会显示在日期旁边" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>标题</span>
+            <input id="calendar-entry-title" type="text" placeholder="可留空，优先显示碎碎念摘要" />
+          </label>
+
+          <div class="field-grid compact">
+            <label class="field">
+              <span>心情</span>
+              <input id="calendar-mood" type="text" />
+            </label>
+            <label class="field">
+              <span>天气</span>
+              <input id="calendar-weather" type="text" />
+            </label>
+          </div>
+
+          <div class="field-grid compact">
+            <label class="field">
+              <span>标签</span>
+              <input id="calendar-tags" type="text" />
+            </label>
+            <label class="field">
+              <span>贴纸名</span>
+              <input id="calendar-stickers" type="text" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>碎碎念</span>
+            <textarea id="calendar-whispers" rows="6" placeholder="每行一条，会显示在日期格子下面"></textarea>
+          </label>
+
+          <details class="advanced-fields">
+            <summary>更多段落</summary>
+            <label class="field">
+              <span>今天的一句话</span>
+              <textarea id="calendar-sentence" rows="3"></textarea>
+            </label>
+            <label class="field">
+              <span>我们一起</span>
+              <textarea id="calendar-together" rows="3"></textarea>
+            </label>
+            <label class="field">
+              <span>想记住</span>
+              <textarea id="calendar-remember" rows="3"></textarea>
+            </label>
+          </details>
+
+          <label class="field">
+            <span>Markdown 原文</span>
+            <textarea id="calendar-markdown" class="raw-markdown" rows="10"></textarea>
+          </label>
+
+          <div class="save-row">
+            <label class="check-row">
+              <input id="calendar-generate" type="checkbox" checked />
+              <span>保存后同步日历页</span>
+            </label>
+            <button type="button" class="ghost-button" id="rebuild-markdown">从表单生成 Markdown</button>
+            <button type="button" class="save-button" id="calendar-save">保存这一天</button>
+          </div>
+          <p class="save-message" id="calendar-message"></p>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/calendar.js"></script>
+  </body>
+</html>

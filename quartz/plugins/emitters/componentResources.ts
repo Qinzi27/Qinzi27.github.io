@@ -7,6 +7,8 @@ import spaRouterScript from "../../components/scripts/spa.inline"
 // @ts-ignore
 import popoverScript from "../../components/scripts/popover.inline"
 // @ts-ignore
+import calendarCommentsScript from "../../components/scripts/calendarComments.inline"
+// @ts-ignore
 import stickerWallScript from "../../components/scripts/stickerWall.inline"
 import baseStyles from "../../styles/base.scss"
 import customStyles from "../../styles/custom.scss"
@@ -93,6 +95,7 @@ function addGlobalPageResources(ctx: BuildCtx, componentResources: ComponentReso
   }
 
   componentResources.afterDOMLoaded.push(stickerWallScript)
+  componentResources.afterDOMLoaded.push(calendarCommentsScript)
 
   if (cfg.analytics?.provider === "google") {
     const tagId = cfg.analytics.tagId
