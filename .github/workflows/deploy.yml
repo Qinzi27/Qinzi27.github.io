@@ -41,7 +41,7 @@ jobs:
       - name: Build Quartz
         env:
           PARENT_CALENDAR_PASSWORD: ${{ secrets.PARENT_CALENDAR_PASSWORD }}
-          PUBLIC_INTERACTIONS_API_URL: ${{ vars.PUBLIC_INTERACTIONS_API_URL }}
+          PUBLIC_INTERACTIONS_API_URL: https://qinzi27-interactions.qinzi27.workers.dev
         run: npm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

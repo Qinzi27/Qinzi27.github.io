@@ -173,9 +173,13 @@ npm.cmd run interactions:migrate
 npm.cmd run interactions:deploy
 ```
 
-The public site reads the Worker URL from `PUBLIC_INTERACTIONS_API_URL` at build time. If the URL is empty or the Worker is unavailable, sticker placement and comments fall back to local browser storage.
+The public site reads the Worker URL from `PUBLIC_INTERACTIONS_API_URL` at build time. The production Worker URL is:
 
-For GitHub Pages deployment, set repository variable `PUBLIC_INTERACTIONS_API_URL` to the deployed Worker URL, for example `https://qinzi27-interactions.<your-subdomain>.workers.dev`.
+```text
+https://qinzi27-interactions.qinzi27.workers.dev
+```
+
+If the URL is empty or the Worker is unavailable, sticker placement and comments fall back to local browser storage.
 
 The Worker secret `ADMIN_TOKEN` is for moderation endpoints only. Do not commit it. A local copy can be kept under `content/private/`.
 
