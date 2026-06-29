@@ -474,7 +474,7 @@ function makeMonthBlock(entries, wallStickerFiles) {
 
   return [
     MONTH_START_MARKER,
-    '<div class="calendar-sticker-wall" data-sticker-wall data-sticker-storage-key="qinzi27-calendar-sticker-wall-v1">',
+    '<div class="calendar-sticker-wall" data-sticker-wall data-sticker-owner-only="true" data-sticker-storage-key="qinzi27-calendar-sticker-wall-v1">',
     '  <div class="sticker-category-filter calendar-sticker-category-filter" data-sticker-categories aria-label="Calendar sticker categories"></div>',
     '  <div class="sticker-wall-toolbar calendar-sticker-toolbar" aria-label="Calendar sticker controls">',
     '    <button type="button" data-sticker-add>随机贴一张</button>',

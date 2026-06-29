@@ -32,11 +32,21 @@ type QinziInteractionClient = {
   apiBase: string
   enabled: boolean
   visitorId: () => string
+  ownerKey: () => string
+  setOwnerKey: (value: string) => void
+  clearOwnerKey: () => void
   request: <T>(path: string, init?: RequestInit) => Promise<T>
   listStickers: (boardKey: string) => Promise<QinziInteractionSticker[]>
-  createSticker: (payload: Record<string, unknown>) => Promise<QinziInteractionSticker | null>
-  updateSticker: (id: string, payload: Record<string, unknown>) => Promise<QinziInteractionSticker | null>
-  deleteSticker: (id: string) => Promise<void>
+  createSticker: (
+    payload: Record<string, unknown>,
+    options?: { owner?: boolean },
+  ) => Promise<QinziInteractionSticker | null>
+  updateSticker: (
+    id: string,
+    payload: Record<string, unknown>,
+    options?: { owner?: boolean },
+  ) => Promise<QinziInteractionSticker | null>
+  deleteSticker: (id: string, options?: { owner?: boolean }) => Promise<void>
   listComments: (params: Record<string, string>) => Promise<QinziInteractionComment[]>
   saveComment: (payload: Record<string, unknown>) => Promise<QinziInteractionComment | null>
 }
@@ -47,6 +57,7 @@ const qinziInteractionsWindow = window as Window & {
 }
 
 const qinziInteractionVisitorKey = "qinzi27-interaction-visitor-id-v1"
+const qinziInteractionOwnerKey = "qinzi27-interaction-owner-key-v1"
 
 function cleanInteractionApiBase(value: unknown) {
   return String(value || "").trim().replace(/\/+$/, "")
@@ -73,6 +84,27 @@ function getInteractionVisitorId() {
   } catch {
     return "visitor-local"
   }
+}
+
+function getInteractionOwnerKey() {
+  try {
+    return localStorage.getItem(qinziInteractionOwnerKey)?.trim() ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function setInteractionOwnerKey(value: string) {
+  localStorage.setItem(qinziInteractionOwnerKey, value.trim())
+}
+
+function clearInteractionOwnerKey() {
+  localStorage.removeItem(qinziInteractionOwnerKey)
+}
+
+function ownerRequestHeaders(enabled?: boolean) {
+  const key = enabled ? getInteractionOwnerKey() : ""
+  return key ? { Authorization: `Bearer ${key}` } : undefined
 }
 
 const qinziInteractionsApiBase = cleanInteractionApiBase(qinziInteractionsWindow.QINZI_INTERACTIONS_API_BASE)
@@ -102,6 +134,9 @@ qinziInteractionsWindow.QinziInteractions = {
   apiBase: qinziInteractionsApiBase,
   enabled: Boolean(qinziInteractionsApiBase),
   visitorId: getInteractionVisitorId,
+  ownerKey: getInteractionOwnerKey,
+  setOwnerKey: setInteractionOwnerKey,
+  clearOwnerKey: clearInteractionOwnerKey,
   request: qinziInteractionRequest,
   async listStickers(boardKey: string) {
     const visitorId = encodeURIComponent(getInteractionVisitorId())
@@ -111,27 +146,30 @@ qinziInteractionsWindow.QinziInteractions = {
     )
     return payload.stickers ?? []
   },
-  async createSticker(payload: Record<string, unknown>) {
+  async createSticker(payload: Record<string, unknown>, options) {
     const response = await qinziInteractionRequest<{ sticker: QinziInteractionSticker | null }>("/api/stickers", {
       method: "POST",
+      headers: ownerRequestHeaders(options?.owner),
       body: JSON.stringify({ ...payload, visitorId: getInteractionVisitorId() }),
     })
     return response.sticker ?? null
   },
-  async updateSticker(id: string, payload: Record<string, unknown>) {
+  async updateSticker(id: string, payload: Record<string, unknown>, options) {
     const response = await qinziInteractionRequest<{ sticker: QinziInteractionSticker | null }>(
       `/api/stickers/${encodeURIComponent(id)}`,
       {
         method: "PATCH",
+        headers: ownerRequestHeaders(options?.owner),
         body: JSON.stringify({ ...payload, visitorId: getInteractionVisitorId() }),
       },
     )
     return response.sticker ?? null
   },
-  async deleteSticker(id: string) {
+  async deleteSticker(id: string, options) {
     const visitorId = encodeURIComponent(getInteractionVisitorId())
     await qinziInteractionRequest(`/api/stickers/${encodeURIComponent(id)}?visitorId=${visitorId}`, {
       method: "DELETE",
+      headers: ownerRequestHeaders(options?.owner),
     })
   },
   async listComments(params: Record<string, string>) {

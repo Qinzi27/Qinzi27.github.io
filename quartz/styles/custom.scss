@@ -1275,6 +1275,64 @@ code {
   margin: 1rem 0 2rem;
 }
 
+.sticker-owner-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+  padding: 0.68rem 0.78rem;
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.sticker-owner-key {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--dark);
+}
+
+.sticker-owner-key input {
+  width: min(14rem, 54vw);
+  padding: 0.43rem 0.56rem;
+  border: 1px solid rgba(121, 166, 171, 0.36);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.92);
+  font: inherit;
+}
+
+.sticker-owner-panel button {
+  padding: 0.42rem 0.68rem;
+  border: 1px solid rgba(121, 166, 171, 0.34);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--dark);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sticker-owner-panel button:hover {
+  background: rgba(223, 246, 235, 0.82);
+}
+
+.sticker-owner-status {
+  color: var(--gray);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.calendar-sticker-wall.is-owner-locked .calendar-sticker-category-filter,
+.calendar-sticker-wall.is-owner-locked .calendar-sticker-toolbar,
+.calendar-sticker-wall.is-owner-locked .calendar-sticker-stage {
+  display: none;
+}
+
 .calendar-sticker-stage {
   margin-bottom: 0.65rem;
 }

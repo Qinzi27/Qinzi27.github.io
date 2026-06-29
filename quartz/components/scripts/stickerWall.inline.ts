@@ -28,12 +28,20 @@ type StickerBoardState = {
 }
 
 type StickerInteractionsClient = {
+  apiBase: string
   enabled: boolean
   visitorId: () => string
+  ownerKey: () => string
+  setOwnerKey: (value: string) => void
+  clearOwnerKey: () => void
   listStickers: (boardKey: string) => Promise<PlacedSticker[]>
-  createSticker: (payload: Record<string, unknown>) => Promise<PlacedSticker | null>
-  updateSticker: (id: string, payload: Record<string, unknown>) => Promise<PlacedSticker | null>
-  deleteSticker: (id: string) => Promise<void>
+  createSticker: (payload: Record<string, unknown>, options?: { owner?: boolean }) => Promise<PlacedSticker | null>
+  updateSticker: (
+    id: string,
+    payload: Record<string, unknown>,
+    options?: { owner?: boolean },
+  ) => Promise<PlacedSticker | null>
+  deleteSticker: (id: string, options?: { owner?: boolean }) => Promise<void>
 }
 
 const stickerWallStorageKey = "qinzi27-sticker-wall-v1"
@@ -103,7 +111,11 @@ function canShareAsset(asset: StickerAsset) {
   return asset.src.startsWith("/assets/stickers/") || asset.src.startsWith("/assets/couple-calendar-stickers/")
 }
 
-function canEditSticker(sticker: PlacedSticker) {
+function canEditSticker(sticker: PlacedSticker, ownerOnly = false, ownerUnlocked = false) {
+  if (ownerOnly) {
+    return ownerUnlocked
+  }
+
   const visitorId = getStickerVisitorId()
   return !sticker.visitorId || !visitorId || sticker.visitorId === visitorId
 }
@@ -180,17 +192,20 @@ function renderSticker(
   storageKey: string,
   sticker: PlacedSticker,
   stickers: PlacedSticker[],
+  ownerOnly = false,
+  ownerUnlocked = false,
   onStickersChanged?: () => void,
   onStickerMoved?: (sticker: PlacedSticker) => void,
   onStickerDeleted?: (sticker: PlacedSticker) => void,
 ) {
+  const editable = canEditSticker(sticker, ownerOnly, ownerUnlocked)
   const item = document.createElement("button")
   item.type = "button"
   item.className = "sticker-wall-item"
-  item.classList.toggle("is-readonly", !canEditSticker(sticker))
+  item.classList.toggle("is-readonly", !editable)
   item.dataset.stickerId = sticker.id
   item.ariaLabel = sticker.name
-  item.title = canEditSticker(sticker) ? sticker.name : "只能移动或删除自己贴的贴纸"
+  item.title = editable ? sticker.name : ownerOnly ? "开启我的编辑后可调整" : "只能移动或删除自己贴的贴纸"
   item.style.left = `${sticker.x}%`
   item.style.top = `${sticker.y}%`
   item.style.width = `${sticker.size}px`
@@ -207,7 +222,7 @@ function renderSticker(
   let activePointer: number | null = null
 
   item.addEventListener("pointerdown", (event) => {
-    if (!canEditSticker(sticker)) {
+    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
       return
     }
 
@@ -240,7 +255,7 @@ function renderSticker(
   })
 
   item.addEventListener("dblclick", () => {
-    if (!canEditSticker(sticker)) {
+    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
       return
     }
 
@@ -414,6 +429,7 @@ function renderUploadStage(
   uploadedAssets: StickerAsset[],
   addSticker: (asset: StickerAsset) => void,
   onUploadedAssetsChanged?: () => void,
+  canUseStage = () => true,
 ) {
   if (!stage) {
     return
@@ -433,14 +449,22 @@ function renderUploadStage(
     image.decoding = "async"
     item.append(image)
 
-    item.addEventListener("click", () => addSticker(asset))
+    item.addEventListener("click", () => {
+      if (canUseStage()) {
+        addSticker(asset)
+      }
+    })
     item.addEventListener("dblclick", () => {
+      if (!canUseStage()) {
+        return
+      }
+
       const index = uploadedAssets.findIndex((current) => current.src === asset.src)
       if (index >= 0) {
         uploadedAssets.splice(index, 1)
         saveUploadedAssets(storageKey, uploadedAssets)
         onUploadedAssetsChanged?.()
-        renderUploadStage(stage, storageKey, uploadedAssets, addSticker, onUploadedAssetsChanged)
+        renderUploadStage(stage, storageKey, uploadedAssets, addSticker, onUploadedAssetsChanged, canUseStage)
       }
     })
 
@@ -483,6 +507,8 @@ function initStickerWall(root: HTMLElement) {
   const storageKey = getStorageKey(root)
   const baseAssets = readStickerAssets(root)
   const uploadedAssets = readUploadedAssets(storageKey)
+  const ownerOnly = root.dataset.stickerOwnerOnly === "true"
+  let ownerUnlocked = !ownerOnly
   let selectedCategory = "all"
 
   if (boards.length === 0 || !addButton || !burstButton || !clearButton || baseAssets.length === 0) {
@@ -491,10 +517,141 @@ function initStickerWall(root: HTMLElement) {
 
   const boardStates = boards.map((board, index) => getBoardState(storageKey, board, index, boards.length))
   root.dataset.stickerInitialized = "true"
+  createOwnerPanel()
+  updateOwnerClass()
   boardStates.forEach((state) => {
     state.layer.innerHTML = ""
     state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
   })
+
+  function hasOwnerAccess() {
+    return !ownerOnly || ownerUnlocked
+  }
+
+  function ownerRequestOptions() {
+    return ownerOnly && ownerUnlocked ? { owner: true } : undefined
+  }
+
+  async function validateOwnerKey(key: string) {
+    const client = getStickerInteractionsClient()
+    if (!client?.enabled || !client.apiBase) {
+      return true
+    }
+
+    const response = await fetch(`${client.apiBase}/api/admin/items?status=pending`, {
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    })
+    return response.ok
+  }
+
+  function updateOwnerClass() {
+    root.classList.toggle("is-owner-only", ownerOnly)
+    root.classList.toggle("is-owner-locked", ownerOnly && !ownerUnlocked)
+    root.classList.toggle("is-owner-unlocked", ownerOnly && ownerUnlocked)
+    ;[addButton, burstButton, clearButton, clearUploadsButton, uploadInput].forEach((control) => {
+      if (control) {
+        control.toggleAttribute("disabled", ownerOnly && !ownerUnlocked)
+      }
+    })
+  }
+
+  function rerenderStateStickers() {
+    boardStates.forEach((state) => {
+      state.layer.innerHTML = ""
+      state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
+    })
+  }
+
+  function setOwnerAccess(unlocked: boolean) {
+    ownerUnlocked = !ownerOnly || unlocked
+    updateOwnerClass()
+    rerenderStateStickers()
+    updateMonthPreview()
+    renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
+  }
+
+  function createOwnerPanel() {
+    if (!ownerOnly || root.querySelector("[data-sticker-owner-panel]")) {
+      return
+    }
+
+    const panel = document.createElement("div")
+    panel.className = "sticker-owner-panel"
+    panel.dataset.stickerOwnerPanel = ""
+
+    const label = document.createElement("label")
+    label.className = "sticker-owner-key"
+
+    const labelText = document.createElement("span")
+    labelText.textContent = "我的编辑"
+
+    const input = document.createElement("input")
+    input.type = "password"
+    input.autocomplete = "off"
+    input.spellcheck = false
+    input.placeholder = "管理密钥"
+    input.value = getStickerInteractionsClient()?.ownerKey() ?? ""
+
+    label.append(labelText, input)
+
+    const unlockButton = document.createElement("button")
+    unlockButton.type = "button"
+    unlockButton.textContent = "开启"
+
+    const lockButton = document.createElement("button")
+    lockButton.type = "button"
+    lockButton.textContent = "退出"
+
+    const status = document.createElement("span")
+    status.className = "sticker-owner-status"
+
+    const syncStatus = (message?: string) => {
+      status.textContent = message ?? (ownerUnlocked ? "可调整图标" : "只读")
+    }
+
+    unlockButton.addEventListener("click", async () => {
+      const key = input.value.trim()
+      if (!key) {
+        setOwnerAccess(false)
+        syncStatus()
+        return
+      }
+
+      unlockButton.disabled = true
+      syncStatus("检查中")
+      try {
+        const valid = await validateOwnerKey(key)
+        if (!valid) {
+          getStickerInteractionsClient()?.clearOwnerKey()
+          setOwnerAccess(false)
+          syncStatus("密钥不对")
+          return
+        }
+
+        getStickerInteractionsClient()?.setOwnerKey(key)
+        setOwnerAccess(true)
+        syncStatus()
+      } catch {
+        setOwnerAccess(false)
+        syncStatus("连接失败")
+      } finally {
+        unlockButton.disabled = false
+      }
+    })
+
+    lockButton.addEventListener("click", () => {
+      input.value = ""
+      getStickerInteractionsClient()?.clearOwnerKey()
+      setOwnerAccess(false)
+      syncStatus()
+    })
+
+    panel.append(label, unlockButton, lockButton, status)
+    root.insertBefore(panel, root.querySelector(".sticker-wall-toolbar") ?? root.firstChild)
+    syncStatus()
+  }
 
   function getActiveBoardState() {
     return boardStates.find((state) => isVisibleBoard(state.board)) ?? boardStates[0]
@@ -520,6 +677,8 @@ function initStickerWall(root: HTMLElement) {
       state.storageKey,
       sticker,
       state.stickers,
+      ownerOnly,
+      ownerUnlocked,
       updateMonthPreview,
       (changed) => syncRemoteSticker(state, changed),
       (deleted) => deleteRemoteSticker(deleted),
@@ -534,22 +693,22 @@ function initStickerWall(root: HTMLElement) {
   function syncRemoteSticker(state: StickerBoardState, sticker: PlacedSticker) {
     syncLocalState(state)
     const client = getStickerInteractionsClient()
-    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker)) {
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
       return
     }
 
-    client.updateSticker(sticker.id, remoteStickerPayload(state, sticker)).catch((error) => {
+    client.updateSticker(sticker.id, remoteStickerPayload(state, sticker), ownerRequestOptions()).catch((error) => {
       console.warn("[StickerWall] Failed to update shared sticker", error)
     })
   }
 
   function deleteRemoteSticker(sticker: PlacedSticker) {
     const client = getStickerInteractionsClient()
-    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker)) {
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
       return
     }
 
-    client.deleteSticker(sticker.id).catch((error) => {
+    client.deleteSticker(sticker.id, ownerRequestOptions()).catch((error) => {
       console.warn("[StickerWall] Failed to delete shared sticker", error)
     })
   }
@@ -576,6 +735,10 @@ function initStickerWall(root: HTMLElement) {
   }
 
   function addSticker(asset: StickerAsset, x?: number, y?: number, state = getActiveBoardState()) {
+    if (!hasOwnerAccess()) {
+      return
+    }
+
     const sticker = makeSticker(asset, x, y)
     state.stickers.push(sticker)
     renderStateSticker(state, sticker)
@@ -585,7 +748,7 @@ function initStickerWall(root: HTMLElement) {
     if (client?.enabled && canShareAsset(asset)) {
       sticker.remote = true
       client
-        .createSticker(remoteStickerPayload(state, sticker))
+        .createSticker(remoteStickerPayload(state, sticker), ownerRequestOptions())
         .then((remoteSticker) => {
           if (remoteSticker) {
             Object.assign(sticker, normalizeRemoteSticker(remoteSticker))
@@ -643,34 +806,55 @@ function initStickerWall(root: HTMLElement) {
 
   updateCategoryFilter()
   updateMonthPreview()
-  renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter)
+  renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
   boardStates.forEach((state) => {
     void loadRemoteStickers(state)
   })
-  addButton.addEventListener("click", () => addRandomSticker())
+  addButton.addEventListener("click", () => {
+    if (hasOwnerAccess()) {
+      addRandomSticker()
+    }
+  })
 
   burstButton.addEventListener("click", () => {
+    if (!hasOwnerAccess()) {
+      return
+    }
+
     for (let index = 0; index < 8; index += 1) {
       addRandomSticker()
     }
   })
 
   clearButton.addEventListener("click", () => {
+    if (!hasOwnerAccess()) {
+      return
+    }
+
     const state = getActiveBoardState()
-    const removed = state.stickers.filter((sticker) => canEditSticker(sticker))
-    const kept = state.stickers.filter((sticker) => !canEditSticker(sticker))
+    const removed = state.stickers.filter((sticker) => canEditSticker(sticker, ownerOnly, ownerUnlocked))
+    const kept = state.stickers.filter((sticker) => !canEditSticker(sticker, ownerOnly, ownerUnlocked))
     replaceStateStickers(state, kept)
     removed.forEach(deleteRemoteSticker)
   })
 
   clearUploadsButton?.addEventListener("click", () => {
+    if (!hasOwnerAccess()) {
+      return
+    }
+
     uploadedAssets.splice(0, uploadedAssets.length)
     saveUploadedAssets(storageKey, uploadedAssets)
     updateCategoryFilter()
-    renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter)
+    renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
   })
 
   uploadInput?.addEventListener("change", async () => {
+    if (!hasOwnerAccess()) {
+      uploadInput.value = ""
+      return
+    }
+
     const files = [...(uploadInput.files ?? [])]
     const assets = await Promise.all(files.map((file) => readUploadedFile(file)))
     for (const asset of assets) {
@@ -680,7 +864,7 @@ function initStickerWall(root: HTMLElement) {
     }
     saveUploadedAssets(storageKey, uploadedAssets)
     updateCategoryFilter()
-    renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter)
+    renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
     uploadInput.value = ""
   })
 
@@ -690,6 +874,10 @@ function initStickerWall(root: HTMLElement) {
 
   boardStates.forEach((state) => {
     state.board.addEventListener("dblclick", (event) => {
+      if (!hasOwnerAccess()) {
+        return
+      }
+
       if (event.target !== state.board) {
         return
       }

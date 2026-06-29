@@ -143,6 +143,10 @@ function publicWriteStatus(env: Env) {
   return env.PUBLIC_WRITE_STATUS === "pending" ? "pending" : "approved"
 }
 
+function isOwnerManagedStickerBoard(boardKey: string) {
+  return /^\d{4}-\d{2}$/.test(boardKey)
+}
+
 function cleanDate(value: unknown) {
   const date = cleanText(value, "date", 10, { required: true })
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -261,6 +265,10 @@ async function createSticker(request: Request, env: Env) {
   const visitorId = cleanVisitorId(payload.visitorId)
   const status = publicWriteStatus(env)
 
+  if (isOwnerManagedStickerBoard(boardKey) && !isAdmin(request, env)) {
+    throw new HttpError(403, "This calendar board can only be changed by the owner.")
+  }
+
   await env.DB.prepare(
     `
       INSERT INTO stickers (
@@ -297,12 +305,25 @@ async function updateSticker(request: Request, env: Env, id: string) {
   const payload = await readJson<Record<string, unknown>>(request)
   const admin = isAdmin(request, env)
   const visitorId = cleanVisitorId(payload.visitorId, { required: !admin })
+  const existing = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
+
+  if (!existing) {
+    throw new HttpError(404, "Sticker was not found or cannot be edited by this visitor.")
+  }
+
+  if (isOwnerManagedStickerBoard(existing.board_key)) {
+    if (!admin) {
+      throw new HttpError(403, "This calendar board can only be changed by the owner.")
+    }
+  } else if (existing.visitor_id !== visitorId) {
+    throw new HttpError(404, "Sticker was not found or cannot be edited by this visitor.")
+  }
 
   const result = await env.DB.prepare(
     `
       UPDATE stickers
       SET x = ?, y = ?, size = ?, rotation = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND (visitor_id = ? OR ? = 1)
+      WHERE id = ?
     `,
   )
     .bind(
@@ -311,8 +332,6 @@ async function updateSticker(request: Request, env: Env, id: string) {
       cleanNumber(payload.size, "size", 32, 180),
       cleanNumber(payload.rotation, "rotation", -45, 45),
       id,
-      visitorId,
-      admin ? 1 : 0,
     )
     .run()
 
@@ -327,9 +346,21 @@ async function updateSticker(request: Request, env: Env, id: string) {
 async function deleteSticker(request: Request, env: Env, id: string, url: URL) {
   const admin = isAdmin(request, env)
   const visitorId = cleanVisitorId(url.searchParams.get("visitorId"), { required: !admin })
-  const result = await env.DB.prepare("DELETE FROM stickers WHERE id = ? AND (visitor_id = ? OR ? = 1)")
-    .bind(id, visitorId, admin ? 1 : 0)
-    .run()
+  const existing = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
+
+  if (!existing) {
+    throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
+  }
+
+  if (isOwnerManagedStickerBoard(existing.board_key)) {
+    if (!admin) {
+      throw new HttpError(403, "This calendar board can only be changed by the owner.")
+    }
+  } else if (existing.visitor_id !== visitorId) {
+    throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
+  }
+
+  const result = await env.DB.prepare("DELETE FROM stickers WHERE id = ?").bind(id).run()
 
   if ((result.meta?.changes ?? 0) === 0) {
     throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
