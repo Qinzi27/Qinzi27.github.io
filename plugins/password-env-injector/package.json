@@ -1,0 +1,19 @@
+{
+  "name": "password-env-injector",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"\""
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "quartz": {
+    "name": "password-env-injector",
+    "displayName": "Password Env Injector",
+    "description": "Injects encrypted page passwords from environment variables before encryption.",
+    "version": "1.0.0",
+    "category": "transformer",
+    "defaultOrder": 890
+  }
+}

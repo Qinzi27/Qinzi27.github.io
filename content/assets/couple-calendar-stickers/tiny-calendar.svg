@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title desc">
+  <title id="title">tiny calendar sticker</title>
+  <desc id="desc">A small calendar sticker with a heart.</desc>
+  <rect width="180" height="180" rx="36" fill="#eef6ff"/>
+  <rect x="40" y="46" width="100" height="96" rx="14" fill="#ffffff" stroke="#6b8fb8" stroke-width="7"/>
+  <path d="M40 72h100" stroke="#6b8fb8" stroke-width="7"/>
+  <path d="M65 36v22M115 36v22" stroke="#496d9c" stroke-width="9" stroke-linecap="round"/>
+  <path d="M90 124s-25-14-25-31c0-9 7-16 15-16 5 0 8 2 10 6 2-4 5-6 10-6 8 0 15 7 15 16 0 17-25 31-25 31z" fill="#d95f78"/>
+</svg>

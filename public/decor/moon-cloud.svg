@@ -1,9 +1,0 @@
-<svg width="150" height="116" viewBox="0 0 150 116" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <title>Moon cloud decoration</title>
-  <path d="M82 12c-7 16-2 35 12 46 11 9 25 11 38 6-6 15-21 26-39 26-24 0-43-19-43-43 0-16 9-30 22-37 4-2 8 0 10 2Z" fill="#FFE5A6"/>
-  <path d="M32 83c-9 0-16-7-16-16s7-16 16-16h2c3-16 17-28 34-28 17 0 31 12 34 28h2c15 0 27 12 27 27s-12 27-27 27H43c-6 0-11-5-11-11V83Z" fill="#F8FCFF"/>
-  <path d="M44 82h64" stroke="#BDE1FF" stroke-width="7" stroke-linecap="round"/>
-  <path d="m21 20 4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z" fill="#BDE1FF"/>
-  <path d="m126 7 3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8Z" fill="#F2B8C6"/>
-  <circle cx="137" cy="86" r="5" fill="#87BDE6"/>
-</svg>

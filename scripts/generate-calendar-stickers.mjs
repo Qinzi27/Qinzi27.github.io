@@ -1,0 +1,545 @@
+import fs from "node:fs"
+import path from "node:path"
+import { slugifyFilePath } from "@quartz-community/utils"
+
+const STICKER_DIR = path.resolve("content/assets/couple-calendar-stickers")
+const DAILY_LOG = path.resolve("content/Our Calendar/每日记录编辑本.md")
+const CALENDAR_PAGE = path.resolve("content/Our Calendar/index.md")
+
+const MONTH_START_MARKER = "<!-- calendar-months:start -->"
+const MONTH_END_MARKER = "<!-- calendar-months:end -->"
+const STICKER_START_MARKER = "<!-- calendar-stickers:start -->"
+const STICKER_END_MARKER = "<!-- calendar-stickers:end -->"
+const ENTRY_START_MARKER = "<!-- calendar-entries:start -->"
+const ENTRY_END_MARKER = "<!-- calendar-entries:end -->"
+
+const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"])
+
+function toPosix(filePath) {
+  return filePath.split(path.sep).join("/")
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+}
+
+function pad(value) {
+  return String(value).padStart(2, "0")
+}
+
+function isoDate(year, month, day) {
+  return `${year}-${pad(month)}-${pad(day)}`
+}
+
+function ensureDirs() {
+  fs.mkdirSync(STICKER_DIR, { recursive: true })
+  fs.mkdirSync(path.dirname(DAILY_LOG), { recursive: true })
+}
+
+function stripFrontmatter(source) {
+  return source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "")
+}
+
+function stripFencedCode(source) {
+  return source.replace(/^```[\s\S]*?^```/gm, "")
+}
+
+function walkImages(dir, files = []) {
+  if (!fs.existsSync(dir)) {
+    return files
+  }
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      walkImages(fullPath, files)
+      continue
+    }
+
+    const extension = path.extname(entry.name).toLowerCase()
+    if (IMAGE_EXTENSIONS.has(extension)) {
+      files.push(fullPath)
+    }
+  }
+
+  return files
+}
+
+function humanName(filePath) {
+  return path
+    .basename(filePath, path.extname(filePath))
+    .replace(/[-_]+/g, " ")
+    .trim()
+}
+
+function publicStickerPath(filePath) {
+  const relativeToContent = toPosix(path.relative(path.resolve("content"), filePath))
+  return `../${slugifyFilePath(relativeToContent)}`
+}
+
+function makeStickerIndex(imageFiles) {
+  return new Map(
+    imageFiles.map((filePath) => [
+      humanName(filePath).toLowerCase(),
+      {
+        name: humanName(filePath),
+        src: publicStickerPath(filePath),
+      },
+    ]),
+  )
+}
+
+function readDailyLog() {
+  if (!fs.existsSync(DAILY_LOG)) {
+    throw new Error(`Missing daily editing document: ${toPosix(path.relative(process.cwd(), DAILY_LOG))}`)
+  }
+
+  return stripFencedCode(stripFrontmatter(fs.readFileSync(DAILY_LOG, "utf8")))
+}
+
+function parseMeta(value) {
+  const meta = {}
+  for (const line of value.split(/\r?\n/)) {
+    const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*|[\u4e00-\u9fff]+)\s*:\s*(.+)$/)
+    if (!match) {
+      continue
+    }
+
+    meta[match[1].trim().toLowerCase()] = match[2].trim()
+  }
+  return meta
+}
+
+function parseSubsections(value) {
+  const sections = {}
+  const headingPattern = /^###\s+(.+?)\s*$/gm
+  const matches = [...value.matchAll(headingPattern)]
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index]
+    const title = match[1].trim()
+    const bodyStart = match.index + match[0].length
+    const bodyEnd = matches[index + 1]?.index ?? value.length
+    sections[title] = value.slice(bodyStart, bodyEnd).trim()
+  }
+
+  return sections
+}
+
+function firstUsefulLine(value) {
+  return (
+    value
+      ?.split(/\r?\n/)
+      .map((line) => line.replace(/^[-*]\s+/, "").trim())
+      .find((line) => line.length > 0) ?? ""
+  )
+}
+
+function firstNonEmpty(values) {
+  return values.find((value) => typeof value === "string" && value.trim().length > 0) ?? ""
+}
+
+function sleepTimes(sleep) {
+  return String(sleep)
+    .split(/[;；,，、]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function sleepText(sleep) {
+  const times = sleepTimes(sleep)
+  if (times.length > 1) {
+    return times.map((time) => `宝宝${time}睡着`).join("；")
+  }
+
+  return `宝宝${sleep}睡着`
+}
+
+function parseEntries(source) {
+  const headingPattern = /^##\s+(\d{4}-\d{2}-\d{2})\s*$/gm
+  const headings = [...source.matchAll(headingPattern)]
+  const entries = []
+
+  for (let index = 0; index < headings.length; index += 1) {
+    const heading = headings[index]
+    const date = heading[1]
+    const bodyStart = heading.index + heading[0].length
+    const bodyEnd = headings[index + 1]?.index ?? source.length
+    const body = source.slice(bodyStart, bodyEnd).trim()
+    const firstSectionIndex = body.search(/^###\s+/m)
+    const metaBlock = firstSectionIndex === -1 ? body : body.slice(0, firstSectionIndex)
+    const sectionBlock = firstSectionIndex === -1 ? "" : body.slice(firstSectionIndex)
+    const meta = parseMeta(metaBlock)
+    const sections = parseSubsections(sectionBlock)
+    const sleep = meta.sleep || meta.睡眠 || meta.睡着 || ""
+    const notes = firstNonEmpty([sections["碎碎念"], sections["小碎念"], meta.notes, meta.碎碎念])
+    const sentence = sleep ? sleepText(sleep) : sections["今天的一句话"] ?? ""
+    const together = sections["我们一起"] ?? ""
+    const remember = sections["想记住"] ?? ""
+    const title =
+      meta.title || meta.标题 || (sleep ? sleepText(sleep) : firstUsefulLine(sentence) || firstUsefulLine(notes) || "有记录")
+    const stickers = String(meta.stickers || meta.表情 || "")
+      .split(/[,，、]/)
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+
+    entries.push({
+      date,
+      title,
+      sleep,
+      mood: meta.mood || meta.心情 || "",
+      weather: meta.weather || meta.天气 || "",
+      tags: meta.tags || meta.标签 || "",
+      stickers,
+      sentence,
+      together,
+      remember,
+      notes,
+    })
+  }
+
+  return entries.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+function monthKey(date) {
+  return date.slice(0, 7)
+}
+
+function makeMonthTitle(year, month) {
+  const english = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1),
+  )
+  return {
+    english,
+    chinese: `${year}年${month}月`,
+  }
+}
+
+function makeCalendarDay(date, day, entry, outside = false) {
+  if (outside) {
+    return '<span class="couple-day is-empty"></span>'
+  }
+
+  if (!entry) {
+    return `<span class="couple-day"><b>${day}</b></span>`
+  }
+
+  const detail = entry.sleep ? "睡眠记录" : entry.mood || entry.tags || entry.weather || "查看这一天"
+  return [
+    `<a class="couple-day has-note" href="#${date}">`,
+    `  <b>${day}</b>`,
+    `  <strong>${escapeHtml(entry.title)}</strong>`,
+    `  <em>${escapeHtml(detail)}</em>`,
+    "</a>",
+  ].join("\n")
+}
+
+function makeMonthCalendar(key, entriesByDate) {
+  const [year, month] = key.split("-").map(Number)
+  const title = makeMonthTitle(year, month)
+  const firstDay = new Date(year, month - 1, 1)
+  const leading = (firstDay.getDay() + 6) % 7
+  const daysInMonth = new Date(year, month, 0).getDate()
+  const filled = leading + daysInMonth
+  const trailing = (7 - (filled % 7)) % 7
+  const days = []
+
+  for (let index = 0; index < leading; index += 1) {
+    days.push(makeCalendarDay("", "", null, true))
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = isoDate(year, month, day)
+    days.push(makeCalendarDay(date, day, entriesByDate.get(date)))
+  }
+
+  for (let index = 0; index < trailing; index += 1) {
+    days.push(makeCalendarDay("", "", null, true))
+  }
+
+  return [
+    '<div class="couple-calendar">',
+    '  <div class="couple-calendar-top">',
+    `    <p>${escapeHtml(title.english)}</p>`,
+    `    <h2>${escapeHtml(title.chinese)}</h2>`,
+    "    <span>把我们的小日常，一格一格收起来。</span>",
+    "  </div>",
+    '  <div class="couple-calendar-grid">',
+    '    <div class="couple-weekday">一</div>',
+    '    <div class="couple-weekday">二</div>',
+    '    <div class="couple-weekday">三</div>',
+    '    <div class="couple-weekday">四</div>',
+    '    <div class="couple-weekday">五</div>',
+    '    <div class="couple-weekday">六</div>',
+    '    <div class="couple-weekday">日</div>',
+    ...days.map((day) => day.replace(/^/gm, "    ")),
+    "  </div>",
+    "</div>",
+  ].join("\n")
+}
+
+function monthInputId(key) {
+  return `couple-month-${key}`
+}
+
+function makeMonthNav(key, months) {
+  const [year, month] = key.split("-").map(Number)
+  const index = months.indexOf(key)
+  const previous = months[index - 1]
+  const next = months[index + 1]
+  const previousControl = previous
+    ? `<label class="month-turn" for="${monthInputId(previous)}">上一月</label>`
+    : '<span class="month-turn is-disabled">上一月</span>'
+  const nextControl = next
+    ? `<label class="month-turn" for="${monthInputId(next)}">下一月</label>`
+    : '<span class="month-turn is-disabled">下一月</span>'
+
+  return [
+    '<div class="couple-month-nav">',
+    `  ${previousControl}`,
+    `  <strong>${year}年${month}月</strong>`,
+    `  ${nextControl}`,
+    "</div>",
+  ].join("\n")
+}
+
+function makeMonthBlock(entries) {
+  if (entries.length === 0) {
+    return [
+      MONTH_START_MARKER,
+      '<div class="couple-sticker-empty">还没有每日记录。先编辑 `content/Our Calendar/每日记录编辑本.md`。</div>',
+      MONTH_END_MARKER,
+    ].join("\n")
+  }
+
+  const entriesByDate = new Map(entries.map((entry) => [entry.date, entry]))
+  const months = [...new Set(entries.map((entry) => monthKey(entry.date)))]
+  const defaultMonth = months.at(-1)
+  const dynamicStyles = [
+    ".couple-month-pager .couple-month-slide { display: none; }",
+    ...months.map(
+      (key) =>
+        `#${monthInputId(key)}:checked ~ .couple-month-slides .couple-month-slide[data-month="${key}"] { display: block; }`,
+    ),
+    ...months.map(
+      (key) =>
+        `#${monthInputId(key)}:checked ~ .couple-month-tabs label[for="${monthInputId(key)}"] { background: #2f6b5b; color: white; border-color: #2f6b5b; }`,
+    ),
+  ]
+
+  return [
+    MONTH_START_MARKER,
+    '<div class="couple-month-pager">',
+    "<style>",
+    ...dynamicStyles,
+    "</style>",
+    ...months.map(
+      (key) =>
+        `<input class="couple-month-toggle" type="radio" name="couple-month-page" id="${monthInputId(key)}"${key === defaultMonth ? " checked" : ""} />`,
+    ),
+    '  <div class="couple-month-tabs" aria-label="月份">',
+    ...months.map((key) => {
+      const [, month] = key.split("-").map(Number)
+      return `    <label for="${monthInputId(key)}">${month}月</label>`
+    }),
+    "  </div>",
+    '  <div class="couple-month-slides">',
+    ...months.map(
+      (key) =>
+        [
+          `    <section class="couple-month-slide" data-month="${key}">`,
+          makeMonthNav(key, months).replace(/^/gm, "      "),
+          makeMonthCalendar(key, entriesByDate).replace(/^/gm, "      "),
+          "    </section>",
+        ].join("\n"),
+    ),
+    "  </div>",
+    "</div>",
+    MONTH_END_MARKER,
+  ].join("\n")
+}
+
+function makeStickerBlock(imageFiles) {
+  if (imageFiles.length === 0) {
+    return [
+      STICKER_START_MARKER,
+      '<div class="couple-sticker-empty">',
+      "把 PNG、JPG、WebP、GIF、SVG 图片放进 `content/assets/couple-calendar-stickers/`，下次预览或构建时会自动显示在这里。",
+      "</div>",
+      STICKER_END_MARKER,
+    ].join("\n")
+  }
+
+  const figures = imageFiles.map((filePath) => {
+    const src = publicStickerPath(filePath)
+    const name = humanName(filePath)
+
+    return [
+      '  <figure class="couple-sticker">',
+      `    <img src="${src}" alt="${escapeHtml(name)}" loading="lazy" decoding="async" />`,
+      `    <figcaption>${escapeHtml(name)}</figcaption>`,
+      "  </figure>",
+    ].join("\n")
+  })
+
+  return [
+    STICKER_START_MARKER,
+    `<div class="couple-sticker-board" data-sticker-count="${imageFiles.length}">`,
+    ...figures,
+    "</div>",
+    STICKER_END_MARKER,
+  ].join("\n")
+}
+
+function makeEntryStickers(entry, stickerIndex) {
+  const stickers = entry.stickers
+    .map((name) => stickerIndex.get(name))
+    .filter(Boolean)
+
+  if (stickers.length === 0) {
+    return ""
+  }
+
+  return [
+    '<div class="daily-entry-stickers">',
+    ...stickers.map(
+      (sticker) =>
+        `  <img class="inline-sticker" src="${sticker.src}" alt="${escapeHtml(sticker.name)}" loading="lazy" decoding="async" />`,
+    ),
+    "</div>",
+    "",
+  ].join("\n")
+}
+
+function makeMetaLine(entry) {
+  const items = [
+    entry.mood ? `心情：${entry.mood}` : "",
+    entry.weather ? `天气：${entry.weather}` : "",
+    entry.tags ? `标签：${entry.tags}` : "",
+  ].filter(Boolean)
+
+  if (items.length === 0) {
+    return ""
+  }
+
+  return `<p class="daily-entry-meta">${escapeHtml(items.join(" · "))}</p>\n\n`
+}
+
+function noteItems(value) {
+  return String(value)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*]\s+/, "").trim())
+    .filter(Boolean)
+}
+
+function makeWhisperBlock(entry) {
+  const items = noteItems(entry.notes)
+
+  if (items.length === 0) {
+    return ""
+  }
+
+  return [
+    '<div class="daily-whispers">',
+    "  <p>碎碎念</p>",
+    "  <ul>",
+    ...items.map((item) => `    <li>${escapeHtml(item)}</li>`),
+    "  </ul>",
+    "</div>",
+  ].join("\n")
+}
+
+function makeEntryBlock(entries, stickerIndex) {
+  if (entries.length === 0) {
+    return [ENTRY_START_MARKER, "还没有每日记录。", ENTRY_END_MARKER].join("\n")
+  }
+
+  const blocks = entries
+    .slice()
+    .reverse()
+    .map((entry) => {
+      const lines = [`## ${entry.date}`, ""]
+      const metaLine = makeMetaLine(entry).trimEnd()
+      const stickerLine = makeEntryStickers(entry, stickerIndex).trimEnd()
+
+      if (metaLine) {
+        lines.push(metaLine, "")
+      }
+
+      if (stickerLine) {
+        lines.push(stickerLine, "")
+      }
+
+      if (entry.sleep) {
+        lines.push(`<p class="sleep-entry">${escapeHtml(sleepText(entry.sleep))}</p>`)
+        const whisperBlock = makeWhisperBlock(entry)
+        if (whisperBlock) {
+          lines.push("", whisperBlock)
+        }
+        return lines.join("\n")
+      }
+
+      if (entry.sentence) {
+        lines.push("### 今天的一句话", "", entry.sentence)
+      }
+
+      if (entry.together) {
+        lines.push("", "### 我们一起", "", entry.together)
+      }
+
+      if (entry.remember) {
+        lines.push("", "### 想记住", "", entry.remember)
+      }
+
+      const whisperBlock = makeWhisperBlock(entry)
+      if (whisperBlock) {
+        lines.push("", whisperBlock)
+      }
+
+      return lines.join("\n")
+    })
+
+  return [ENTRY_START_MARKER, ...blocks, ENTRY_END_MARKER].join("\n\n")
+}
+
+function replaceMarkedBlock(source, startMarker, endMarker, nextBlock) {
+  const start = source.indexOf(startMarker)
+  const end = source.indexOf(endMarker)
+
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`Missing marker pair: ${startMarker} / ${endMarker}`)
+  }
+
+  return (
+    source.slice(0, start).trimEnd() +
+    "\n\n" +
+    nextBlock +
+    "\n\n" +
+    source.slice(end + endMarker.length).trimStart()
+  )
+}
+
+function updateCalendarPage({ monthBlock, stickerBlock, entryBlock }) {
+  let source = fs.readFileSync(CALENDAR_PAGE, "utf8")
+  source = replaceMarkedBlock(source, MONTH_START_MARKER, MONTH_END_MARKER, monthBlock)
+  source = replaceMarkedBlock(source, STICKER_START_MARKER, STICKER_END_MARKER, stickerBlock)
+  source = replaceMarkedBlock(source, ENTRY_START_MARKER, ENTRY_END_MARKER, entryBlock)
+  fs.writeFileSync(CALENDAR_PAGE, source, "utf8")
+}
+
+ensureDirs()
+const imageFiles = walkImages(STICKER_DIR).sort((a, b) => a.localeCompare(b, "zh-CN"))
+const stickerIndex = makeStickerIndex(imageFiles)
+const entries = parseEntries(readDailyLog())
+
+updateCalendarPage({
+  monthBlock: makeMonthBlock(entries),
+  stickerBlock: makeStickerBlock(imageFiles),
+  entryBlock: makeEntryBlock(entries, stickerIndex),
+})
+
+console.log(`Couple calendar generated: ${entries.length} day(s), ${imageFiles.length} sticker(s)`)

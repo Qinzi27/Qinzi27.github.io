@@ -1,27 +1,166 @@
-# Qinzi27 Blog
+# Qinzi27 Academic Garden
 
-A clean personal blog built with Next.js App Router.
+A Quartz v5 Markdown-based academic blog for long-term learning notes, paper reading, projects, and selected life writing.
 
-## Development
+## Structure
 
-```bash
-npm install
-npm run dev
+- `content/index.md`: Home
+- `content/About.md`: About
+- `content/Now.md`: Current focus
+- `content/Learning Notes/`: bioinformatics, statistics, coding, PhD preparation
+- `content/Research & Papers/`: paper reading and research synthesis
+- `content/Life Journal/`: selected weekly reviews, fitness, travel, reading, thoughts, growth
+- `content/Projects/`: project logs and PhD preparation
+- `templates/`: reusable Markdown templates
+- `content/assets/`: public-safe images and decorative assets
+- `content/private/assets/`: private or unlicensed reference assets, ignored and unpublished
+- `scripts/prepublish-check.mjs`: privacy-safe pre-publish scanner
+- `plugins/privacy-publish-filter/`: Quartz filter that publishes only public notes
+
+## Frontmatter
+
+Every publishable Markdown note should include:
+
+```yaml
+---
+title: "Note title"
+date: "2026-06-27"
+type: "learning-note"
+tags: ["bioinformatics", "statistics"]
+status: "seed"
+publish: true
+privacy: "public"
+summary: "One-sentence summary."
+---
 ```
 
-## Writing
+The site publishes normal public Markdown notes where both of these are true:
 
-Add Markdown posts to `content/posts`. Each post starts with front matter:
+```yaml
+publish: true
+privacy: public
+```
+
+It can also publish encrypted pages for private sharing:
+
+```yaml
+publish: true
+privacy: protected
+passwordEnv: PARENT_CALENDAR_PASSWORD
+unlisted: true
+```
+
+Do not write a real `password:` value into Markdown. Set the matching environment variable locally, and add the same name as a GitHub Actions repository secret before deploying.
+
+## Privacy Rules
+
+The build excludes folders named:
+
+- `private/`
+- `drafts/`
+- `raw/`
+- `emails/`
+- `attachments/`
+- `pdfs/`
+
+The pre-publish check also fails the build if publishable content contains sensitive keywords such as passport, visa, address, phone, email, ID number, token, API key, secret, or password. Protected pages must use `passwordEnv`; literal `password:` frontmatter is blocked so the site password is not committed by accident.
+
+The check prints the file and line that triggered the warning. It never deletes files automatically.
+
+## Assets
+
+Use these locations:
+
+- Public-safe assets: `content/assets/`
+- Decorative public assets: `content/assets/decor/`
+- Covers and section banners: `content/assets/covers/`
+- Private or unlicensed reference assets: `content/private/assets/`
+
+Only put images in `content/assets/` when you made them, they are openly licensed, or you have permission to publish them. Character wallpapers from the web should stay in `content/private/assets/` unless you have publishing rights.
+
+Reference a public image in Markdown like this:
 
 ```md
----
-title: "Post title"
-date: "2026-06-26"
-summary: "Short summary"
-tags: ["Life", "Code"]
----
+![[assets/decor/example.webp]]
 ```
 
-## Deploy
+The `content/private/` folder is ignored by Git and excluded from publishing, so it is the right place for local-only inspiration packs, draft screenshots, and unlicensed reference images.
 
-The project uses `output: "export"` so it can be deployed as a static site.
+## Write A New Note
+
+1. Copy a template from `templates/`.
+2. Place the new note under the right folder in `content/`.
+3. Keep `publish: false` and `privacy: private` while drafting.
+4. Change to `publish: true` and `privacy: public` only when the note is safe to publish.
+5. Link related notes with Quartz wiki links, for example `[[Learning Notes]]`.
+
+## Preview Locally
+
+Install dependencies once:
+
+```bash
+npm ci
+```
+
+Preview the site:
+
+```bash
+npm run preview
+```
+
+This runs the privacy check, installs Quartz plugins from `quartz.config.yaml`, and starts a local Quartz preview server.
+
+For protected pages, set the password environment variable first:
+
+```powershell
+$env:PARENT_CALENDAR_PASSWORD = "your-password-here"
+npm run preview
+```
+
+## Couple Calendar Stickers
+
+Edit daily calendar content here:
+
+```text
+content/Our Calendar/每日记录编辑本.md
+```
+
+Then run:
+
+```powershell
+npm.cmd run generate-calendar
+```
+
+This updates the protected calendar page with a clickable calendar and a daily-content section.
+
+Put public-safe sticker images here:
+
+```text
+content/assets/couple-calendar-stickers/
+```
+
+Supported formats: PNG, JPG, WebP, GIF, SVG, and AVIF.
+
+The build runs `npm run generate-calendar`, scans that folder, and updates the sticker area on the protected calendar page.
+
+## Build
+
+```bash
+npm run build
+```
+
+The build writes the generated static site to `public/`.
+
+## Commit And Publish
+
+```bash
+npm run prepublish-check
+git status
+git add .
+git commit -m "Update academic garden"
+git push origin main
+```
+
+GitHub Actions deploys the Quartz site to GitHub Pages after the privacy check and build pass.
+
+In the GitHub repository settings, Pages should use **GitHub Actions** as the source.

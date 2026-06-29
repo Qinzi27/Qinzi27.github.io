@@ -1,0 +1,272 @@
+# yaml-language-server: $schema=./quartz/plugins/quartz-plugins.schema.json
+configuration:
+  pageTitle: Qinzi27 Academic Garden
+  pageTitleSuffix: ""
+  enableSPA: true
+  enablePopovers: true
+  analytics: null
+  locale: zh-CN
+  baseUrl: qinzi27.github.io
+  ignorePatterns:
+    - "**/private/**"
+    - "**/drafts/**"
+    - "**/raw/**"
+    - "**/emails/**"
+    - "**/attachments/**"
+    - "**/pdfs/**"
+    - "**/*.pdf"
+    - "**/*.PDF"
+    - "**/*.eml"
+    - "**/*.msg"
+    - "**/*.doc"
+    - "**/*.docx"
+    - "**/*.xls"
+    - "**/*.xlsx"
+    - "**/*.key"
+    - "**/*.pem"
+    - "**/*.p12"
+    - "**/*.pfx"
+    - .obsidian
+  theme:
+    fontOrigin: googleFonts
+    cdnCaching: true
+    typography:
+      header: Noto Sans SC
+      body: Noto Sans SC
+      code: IBM Plex Mono
+    colors:
+      lightMode:
+        light: "#fbfaf7"
+        lightgray: "#e6e0d6"
+        gray: "#b9b0a3"
+        darkgray: "#4e5149"
+        dark: "#20241f"
+        secondary: "#2f6b5b"
+        tertiary: "#8b6f3d"
+        highlight: rgba(47, 107, 91, 0.12)
+        textHighlight: "#fff1a8"
+      darkMode:
+        light: "#171816"
+        lightgray: "#343932"
+        gray: "#6d746a"
+        darkgray: "#d9ded5"
+        dark: "#f3f4ef"
+        secondary: "#8fc7b5"
+        tertiary: "#d8b56a"
+        highlight: rgba(143, 199, 181, 0.16)
+        textHighlight: "#6d5f20"
+plugins:
+  - source: ./plugins/privacy-publish-filter
+    enabled: true
+    order: 1
+  - source: github:quartz-community/created-modified-date
+    enabled: true
+    options:
+      defaultDateType: modified
+      priority:
+        - frontmatter
+        - git
+        - filesystem
+    order: 10
+  - source: github:quartz-community/syntax-highlighting
+    enabled: true
+    options:
+      theme:
+        light: github-light
+        dark: github-dark
+      keepBackground: false
+    order: 20
+  - source: github:quartz-community/obsidian-flavored-markdown
+    enabled: true
+    options:
+      enableInHtmlEmbed: false
+      enableCheckbox: true
+    order: 30
+  - source: github:quartz-community/github-flavored-markdown
+    enabled: true
+    order: 40
+  - source: github:quartz-community/table-of-contents
+    enabled: true
+    order: 50
+    layout:
+      position: right
+      priority: 30
+  - source: github:quartz-community/crawl-links
+    enabled: true
+    options:
+      markdownLinkResolution: shortest
+    order: 60
+  - source: github:quartz-community/description
+    enabled: true
+    order: 70
+  - source: github:quartz-community/latex
+    enabled: true
+    options:
+      renderEngine: katex
+    order: 80
+  - source: github:quartz-community/remove-draft
+    enabled: true
+  - source: github:quartz-community/explicit-publish
+    enabled: true
+  - source: github:quartz-community/alias-redirects
+    enabled: true
+  - source: github:quartz-community/content-index
+    enabled: true
+    options:
+      enableSiteMap: true
+      enableRSS: true
+  - source: github:quartz-community/favicon
+    enabled: true
+  - source: github:quartz-community/og-image
+    enabled: true
+  - source: github:quartz-community/content-page
+    enabled: true
+  - source: github:quartz-community/folder-page
+    enabled: true
+  - source: github:quartz-community/tag-page
+    enabled: true
+  - source: github:quartz-community/explorer
+    enabled: true
+    layout:
+      position: left
+      priority: 50
+  - source: github:quartz-community/graph
+    enabled: true
+    layout:
+      position: right
+      priority: 10
+  - source: github:quartz-community/search
+    enabled: true
+    layout:
+      position: left
+      priority: 20
+      group: toolbar
+      groupOptions:
+        grow: true
+  - source: github:quartz-community/backlinks
+    enabled: true
+    layout:
+      position: right
+      priority: 50
+  - source: github:quartz-community/article-title
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 10
+  - source: github:quartz-community/content-meta
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 20
+  - source: github:quartz-community/tag-list
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 30
+  - source: github:quartz-community/page-title
+    enabled: true
+    layout:
+      position: left
+      priority: 10
+  - source: github:quartz-community/darkmode
+    enabled: true
+    layout:
+      position: left
+      priority: 30
+      group: toolbar
+  - source: github:quartz-community/reader-mode
+    enabled: true
+    layout:
+      position: left
+      priority: 35
+      group: toolbar
+  - source: github:quartz-community/breadcrumbs
+    enabled: true
+    layout:
+      position: beforeBody
+      priority: 5
+      condition: not-index
+  - source: github:quartz-community/footer
+    enabled: true
+    options:
+      links:
+        GitHub: https://github.com/Qinzi27
+        RSS: /index.xml
+  - source: github:quartz-community/recent-notes
+    enabled: true
+    options:
+      title: Recent Notes
+      limit: 6
+      linkToMore: false
+      showTags: true
+    layout:
+      position: left
+      priority: 25
+  - source: github:quartz-community/spacer
+    enabled: true
+    options: {}
+    order: 25
+    layout:
+      position: left
+      priority: 25
+      display: mobile-only
+  - source: github:quartz-community/note-properties
+    enabled: true
+    options:
+      includeAll: false
+      includedProperties:
+        - type
+        - status
+        - summary
+        - tags
+      excludedProperties: []
+      hidePropertiesView: true
+      delimiters: ---
+      language: yaml
+    order: 5
+    layout:
+      position: beforeBody
+      priority: 15
+      display: all
+  - source: ./plugins/password-env-injector
+    enabled: true
+    options:
+      envField: passwordEnv
+      passwordField: password
+      minLength: 4
+    order: 890
+  - source: github:quartz-community/encrypted-pages
+    enabled: true
+    options:
+      iterations: 600000
+      passwordField: password
+      unlistWhenEncrypted: true
+      outputPath: static/encryptedContentIndex.json
+    order: 900
+    layout:
+      position: afterBody
+      priority: 100
+      display: all
+layout:
+  groups:
+    toolbar:
+      priority: 35
+      direction: row
+      gap: 0.5rem
+  byPageType:
+    "404":
+      positions:
+        beforeBody: []
+        left: []
+        right: []
+    content: {}
+    folder:
+      exclude:
+        - reader-mode
+      positions:
+        right: []
+    tag:
+      exclude:
+        - reader-mode
+      positions:
+        right: []
