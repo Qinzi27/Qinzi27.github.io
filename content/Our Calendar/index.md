@@ -3644,6 +3644,7 @@ summary: "A private calendar for shared daily moments."
                 <span class="calendar-attribute-chip calendar-attribute-rest">休息</span>
                 <span class="calendar-sleep-pill">00:50</span>
               </span>
+              <strong class="calendar-whisper-preview">宝宝说这两天好无聊哦，没什么事做</strong>
               <em>暴雨</em>
             </a>
             <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-01" aria-label="编辑 2026-07-01 的评论">
@@ -3940,6 +3941,13 @@ summary: "A private calendar for shared daily moments."
 <p class="daily-entry-meta">天气：暴雨</p>
 
 <p class="sleep-entry">宝宝00:50睡着</p>
+
+<div class="daily-whispers">
+  <p>碎碎念</p>
+  <ul>
+    <li>宝宝说这两天好无聊哦，没什么事做</li>
+  </ul>
+</div>
 
 ## 2026-06-30
 
