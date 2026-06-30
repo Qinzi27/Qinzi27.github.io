@@ -2830,14 +2830,18 @@ summary: "A private calendar for shared daily moments."
 .couple-month-pager .couple-month-slide { display: none; }
 #couple-month-2026-05:checked ~ .couple-month-slides .couple-month-slide[data-month="2026-05"] { display: block; }
 #couple-month-2026-06:checked ~ .couple-month-slides .couple-month-slide[data-month="2026-06"] { display: block; }
+#couple-month-2026-07:checked ~ .couple-month-slides .couple-month-slide[data-month="2026-07"] { display: block; }
 #couple-month-2026-05:checked ~ .couple-month-tabs label[for="couple-month-2026-05"] { background: #2f6b5b; color: white; border-color: #2f6b5b; }
 #couple-month-2026-06:checked ~ .couple-month-tabs label[for="couple-month-2026-06"] { background: #2f6b5b; color: white; border-color: #2f6b5b; }
+#couple-month-2026-07:checked ~ .couple-month-tabs label[for="couple-month-2026-07"] { background: #2f6b5b; color: white; border-color: #2f6b5b; }
 </style>
 <input class="couple-month-toggle" type="radio" name="couple-month-page" id="couple-month-2026-05" />
-<input class="couple-month-toggle" type="radio" name="couple-month-page" id="couple-month-2026-06" checked />
+<input class="couple-month-toggle" type="radio" name="couple-month-page" id="couple-month-2026-06" />
+<input class="couple-month-toggle" type="radio" name="couple-month-page" id="couple-month-2026-07" checked />
   <div class="couple-month-tabs" aria-label="月份">
     <label for="couple-month-2026-05">5月</label>
     <label for="couple-month-2026-06">6月</label>
+    <label for="couple-month-2026-07">7月</label>
   </div>
   <div class="couple-month-slides calendar-sticker-board">
     <section class="couple-month-slide" data-month="2026-05">
@@ -3184,7 +3188,7 @@ summary: "A private calendar for shared daily moments."
       <div class="couple-month-nav">
         <label class="month-turn" for="couple-month-2026-05">上一月</label>
         <strong>2026年6月</strong>
-        <span class="month-turn is-disabled">下一月</span>
+        <label class="month-turn" for="couple-month-2026-07">下一月</label>
       </div>
       <div class="couple-calendar" data-sticker-board data-sticker-board-key="2026-06" data-sticker-board-label="2026年6月" data-sticker-board-control="couple-month-2026-06">
         <div class="couple-calendar-top">
@@ -3611,6 +3615,317 @@ summary: "A private calendar for shared daily moments."
         </div>
       </div>
     </section>
+    <section class="couple-month-slide" data-month="2026-07">
+      <div class="couple-month-nav">
+        <label class="month-turn" for="couple-month-2026-06">上一月</label>
+        <strong>2026年7月</strong>
+        <span class="month-turn is-disabled">下一月</span>
+      </div>
+      <div class="couple-calendar" data-sticker-board data-sticker-board-key="2026-07" data-sticker-board-label="2026年7月" data-sticker-board-control="couple-month-2026-07">
+        <div class="couple-calendar-top">
+          <p>July 2026</p>
+          <h2>2026年7月</h2>
+          <span>把我们的小日常，一格一格收起来。</span>
+        </div>
+        <div class="couple-calendar-grid">
+          <div class="couple-weekday">一</div>
+          <div class="couple-weekday">二</div>
+          <div class="couple-weekday">三</div>
+          <div class="couple-weekday">四</div>
+          <div class="couple-weekday">五</div>
+          <div class="couple-weekday">六</div>
+          <div class="couple-weekday">日</div>
+          <span class="couple-day is-empty"></span>
+          <span class="couple-day is-empty"></span>
+          <div class="couple-day has-note is-rest-day" data-calendar-day data-calendar-date="2026-07-01" data-calendar-attribute="rest" data-calendar-has-sleep="true" data-calendar-sleep-time="00:50">
+            <a class="couple-day-link" href="#2026-07-01">
+              <span class="couple-day-head">
+                <b>1</b>
+                <span class="calendar-attribute-chip calendar-attribute-rest">休息</span>
+                <span class="calendar-sleep-pill">00:50</span>
+              </span>
+              <em>暴雨</em>
+            </a>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-01" aria-label="编辑 2026-07-01 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-02" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>2</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-02" aria-label="编辑 2026-07-02 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-03" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>3</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-03" aria-label="编辑 2026-07-03 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-04" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>4</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-04" aria-label="编辑 2026-07-04 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-05" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>5</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-05" aria-label="编辑 2026-07-05 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-06" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>6</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-06" aria-label="编辑 2026-07-06 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-07" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>7</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-07" aria-label="编辑 2026-07-07 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-08" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>8</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-08" aria-label="编辑 2026-07-08 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-09" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>9</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-09" aria-label="编辑 2026-07-09 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-10" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>10</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-10" aria-label="编辑 2026-07-10 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-11" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>11</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-11" aria-label="编辑 2026-07-11 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-12" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>12</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-12" aria-label="编辑 2026-07-12 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-13" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>13</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-13" aria-label="编辑 2026-07-13 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-14" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>14</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-14" aria-label="编辑 2026-07-14 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-15" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>15</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-15" aria-label="编辑 2026-07-15 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-16" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>16</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-16" aria-label="编辑 2026-07-16 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-17" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>17</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-17" aria-label="编辑 2026-07-17 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-18" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>18</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-18" aria-label="编辑 2026-07-18 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-19" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>19</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-19" aria-label="编辑 2026-07-19 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-20" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>20</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-20" aria-label="编辑 2026-07-20 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-21" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>21</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-21" aria-label="编辑 2026-07-21 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-22" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>22</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-22" aria-label="编辑 2026-07-22 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-23" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>23</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-23" aria-label="编辑 2026-07-23 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-24" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>24</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-24" aria-label="编辑 2026-07-24 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-25" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>25</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-25" aria-label="编辑 2026-07-25 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-26" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>26</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-26" aria-label="编辑 2026-07-26 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-27" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>27</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-27" aria-label="编辑 2026-07-27 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-28" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>28</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-28" aria-label="编辑 2026-07-28 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-29" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>29</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-29" aria-label="编辑 2026-07-29 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-30" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>30</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-30" aria-label="编辑 2026-07-30 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-31" data-calendar-attribute="empty" data-calendar-has-sleep="false">
+            <span class="couple-day-head">
+              <b>31</b>
+            </span>
+            <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-31" aria-label="编辑 2026-07-31 的评论">
+              <span class="calendar-comment-dot" aria-hidden="true"></span>
+              <span class="calendar-comment-icon" aria-hidden="true">记</span>
+            </button>
+          </div>
+          <span class="couple-day is-empty"></span>
+          <span class="couple-day is-empty"></span>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 </div>
@@ -3619,6 +3934,12 @@ summary: "A private calendar for shared daily moments."
 ## 每日记录
 
 <!-- calendar-entries:start -->
+
+## 2026-07-01
+
+<p class="daily-entry-meta">天气：暴雨</p>
+
+<p class="sleep-entry">宝宝00:50睡着</p>
 
 ## 2026-06-30
 
