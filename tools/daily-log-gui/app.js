@@ -130,7 +130,8 @@ function renderRecentEntries(entries) {
 
 function formatGitStatus(payload) {
   const lines = [
-    `branch: ${payload.branch || "(unknown)"}`,
+    `branch: ${payload.branchLine || payload.branch || "(unknown)"}`,
+    payload.aheadBehind ? `sync: ${payload.aheadBehind}` : "sync: clean with upstream or unknown",
     payload.upstream ? `upstream: ${payload.upstream}` : "upstream: not set",
     payload.remote ? `remote: ${payload.remote}` : "remote: not set",
     "",
@@ -153,10 +154,10 @@ function renderGitStatus(payload) {
 }
 
 function renderPushResult(payload) {
-  const lines = [`commit message: ${payload.message}`, ""]
+  const lines = [`result: ${payload.ok ? "success" : "failed"}`, `commit message: ${payload.message}`, ""]
 
   payload.steps.forEach((step) => {
-    lines.push(`[${step.name}] ${step.command || ""}`.trim())
+    lines.push(`[${step.ok === false ? "failed" : "ok"}] ${step.name} ${step.command || ""}`.trim())
     if (step.stdout) {
       lines.push(step.stdout)
     }
@@ -165,6 +166,12 @@ function renderPushResult(payload) {
     }
     lines.push("")
   })
+
+  if (payload.error) {
+    lines.push("error:")
+    lines.push(payload.error)
+    lines.push("")
+  }
 
   lines.push("final status:")
   lines.push(formatGitStatus(payload.summary))
@@ -272,7 +279,11 @@ pushButton.addEventListener("click", async () => {
       }),
     })
     renderPushResult(payload)
-    setPushMessage("推送完成。", "ok")
+    if (payload.ok) {
+      setPushMessage("推送完成。", "ok")
+    } else {
+      setPushMessage("自动提交或推送失败；上方保留了已完成步骤和当前 Git 状态。", "error")
+    }
   } catch (error) {
     setPushMessage(error.message, "error")
     await loadGitStatus()

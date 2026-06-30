@@ -9,10 +9,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const UI_DIR = path.join(ROOT, "tools", "daily-log-gui")
 const DAILY_LOG = path.join(ROOT, "content", "Our Calendar", "每日记录编辑本.md")
 const CALENDAR_SCRIPT = path.join(ROOT, "scripts", "generate-calendar-stickers.mjs")
+const PREPUBLISH_CHECK_SCRIPT = path.join(ROOT, "scripts", "prepublish-check.mjs")
+const TSC_SCRIPT = path.join(ROOT, "node_modules", "typescript", "bin", "tsc")
 const BACKUP_DIR = path.join(ROOT, "content", "private", "backups", "daily-log")
 const DEFAULT_PORT = Number(process.env.PORT || 5177)
 const MAX_BODY_BYTES = 1_000_000
-const NPM_CMD = process.platform === "win32" ? "npm.cmd" : "npm"
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -531,6 +532,7 @@ function runCalendarGenerator() {
 
 function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
   return new Promise((resolve, reject) => {
+    const commandText = [command, ...args].join(" ")
     const child = spawn(command, args, {
       cwd: ROOT,
       windowsHide: true,
@@ -539,7 +541,11 @@ function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
     let stderr = ""
     const timer = setTimeout(() => {
       child.kill()
-      reject(new Error(`${command} ${args.join(" ")} 超时。`))
+      const error = new Error(`${commandText} 超时。`)
+      error.command = commandText
+      error.stdout = stdout.trim()
+      error.stderr = stderr.trim()
+      reject(error)
     }, timeoutMs)
 
     child.stdout.on("data", (chunk) => {
@@ -550,16 +556,24 @@ function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
     })
     child.on("error", (error) => {
       clearTimeout(timer)
+      error.command = commandText
+      error.stdout = stdout.trim()
+      error.stderr = stderr.trim()
       reject(error)
     })
     child.on("close", (code) => {
       clearTimeout(timer)
-      const output = { command: [command, ...args].join(" "), stdout: stdout.trim(), stderr: stderr.trim() }
+      const output = { command: commandText, stdout: stdout.trim(), stderr: stderr.trim() }
       if (code === 0) {
         resolve(output)
       } else {
         const detail = [output.stderr, output.stdout].filter(Boolean).join("\n")
-        reject(new Error(detail || `${output.command} 失败，退出码：${code}`))
+        const error = new Error(detail || `${output.command} 失败，退出码：${code}`)
+        error.command = output.command
+        error.stdout = output.stdout
+        error.stderr = output.stderr
+        error.code = code
+        reject(error)
       }
     })
   })
@@ -573,11 +587,22 @@ async function runOptionalCommand(command, args, options) {
   }
 }
 
+async function runProjectCheck() {
+  const privacy = await runCommand(process.execPath, [PREPUBLISH_CHECK_SCRIPT], { timeoutMs: 120_000 })
+  const typescript = await runCommand(process.execPath, [TSC_SCRIPT, "--noEmit"], { timeoutMs: 180_000 })
+  return {
+    command: "node scripts/prepublish-check.mjs && node node_modules/typescript/bin/tsc --noEmit",
+    stdout: [privacy.stdout, typescript.stdout].filter(Boolean).join("\n"),
+    stderr: [privacy.stderr, typescript.stderr].filter(Boolean).join("\n"),
+  }
+}
+
 function parsePorcelainStatus(source) {
   return source
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
     .filter(Boolean)
+    .filter((line) => !line.startsWith("## "))
     .map((line) => ({
       code: (line.match(/^(.{1,2})\s+(.+)$/)?.[1] ?? line.slice(0, 2)).padEnd(2, " "),
       path: line.match(/^(.{1,2})\s+(.+)$/)?.[2] ?? line.slice(3),
@@ -586,14 +611,21 @@ function parsePorcelainStatus(source) {
 
 async function getGitSummary() {
   const [status, branch, remote, upstream] = await Promise.all([
-    runCommand("git", ["status", "--porcelain=v1", "-uall"]),
+    runCommand("git", ["status", "--porcelain=v1", "-uall", "--branch"]),
     runOptionalCommand("git", ["branch", "--show-current"]),
     runOptionalCommand("git", ["remote", "get-url", "origin"]),
     runOptionalCommand("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]),
   ])
+  const branchLine = status.stdout
+    .split(/\r?\n/)
+    .find((line) => line.startsWith("## "))
+    ?.replace(/^##\s+/, "")
+  const aheadBehind = branchLine?.match(/\[(.+)]/)?.[1] ?? ""
 
   return {
     branch: branch.stdout || "(detached)",
+    branchLine: branchLine || branch.stdout || "(detached)",
+    aheadBehind,
     remote: remote.failed ? "" : remote.stdout,
     upstream: upstream.failed ? "" : upstream.stdout,
     changes: parsePorcelainStatus(status.stdout),
@@ -612,36 +644,66 @@ async function pushCurrentBranch(branch, upstream) {
   return runCommand("git", ["push", "-u", "origin", branch], { timeoutMs: 300_000 })
 }
 
+async function runPushStep(steps, name, action) {
+  try {
+    const output = await action()
+    steps.push({ name, ok: true, ...output })
+    return output
+  } catch (error) {
+    steps.push({
+      name,
+      ok: false,
+      command: error.command || "",
+      stdout: error.stdout || "",
+      stderr: error.stderr || error.message || String(error),
+    })
+    throw error
+  }
+}
+
 async function runOneClickPush(payload) {
   const message = normalizeCommitMessage(payload.message)
   const runCheck = payload.runCheck !== false
   const steps = []
 
-  steps.push({ name: "同步日历", ...(await runCalendarGenerator()) })
+  try {
+    await runPushStep(steps, "同步日历", () => runCalendarGenerator())
 
-  if (runCheck) {
-    steps.push({ name: "项目检查", ...(await runCommand(NPM_CMD, ["run", "check"], { timeoutMs: 180_000 })) })
-  }
-
-  let summary = await getGitSummary()
-  if (summary.changes.length > 0) {
-    steps.push({ name: "暂存改动", ...(await runCommand("git", ["add", "--all"])) })
-
-    const staged = await runCommand("git", ["diff", "--cached", "--name-only"])
-    if (staged.stdout.trim().length === 0) {
-      throw new Error("没有可提交的改动。")
+    if (runCheck) {
+      await runPushStep(steps, "项目检查", () => runProjectCheck())
     }
 
-    steps.push({ name: "创建提交", ...(await runCommand("git", ["commit", "-m", message])) })
-  }
+    let summary = await getGitSummary()
+    if (summary.changes.length > 0) {
+      await runPushStep(steps, "暂存改动", () => runCommand("git", ["add", "--all"]))
 
-  summary = await getGitSummary()
-  steps.push({ name: "推送远端", ...(await pushCurrentBranch(summary.branch, summary.upstream)) })
+      const staged = await runCommand("git", ["diff", "--cached", "--name-only"])
+      if (staged.stdout.trim().length === 0) {
+        steps.push({ name: "创建提交", ok: true, command: "git commit", stdout: "没有可提交的改动，跳过提交。", stderr: "" })
+      } else {
+        await runPushStep(steps, "创建提交", () => runCommand("git", ["commit", "-m", message]))
+      }
+    } else {
+      steps.push({ name: "创建提交", ok: true, command: "git commit", stdout: "工作区没有改动，跳过提交。", stderr: "" })
+    }
 
-  return {
-    message,
-    steps,
-    summary: await getGitSummary(),
+    summary = await getGitSummary()
+    await runPushStep(steps, "推送远端", () => pushCurrentBranch(summary.branch, summary.upstream))
+
+    return {
+      ok: true,
+      message,
+      steps,
+      summary: await getGitSummary(),
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || String(error),
+      message,
+      steps,
+      summary: await getGitSummary(),
+    }
   }
 }
 
