@@ -28,6 +28,15 @@ type QinziInteractionComment = {
   updatedAt?: string
 }
 
+type QinziInteractionStickerPage = {
+  key: string
+  label: string
+  status?: string
+  sortOrder?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
 type QinziInteractionClient = {
   apiBase: string
   enabled: boolean
@@ -47,6 +56,11 @@ type QinziInteractionClient = {
     options?: { owner?: boolean },
   ) => Promise<QinziInteractionSticker | null>
   deleteSticker: (id: string, options?: { owner?: boolean }) => Promise<void>
+  listStickerPages: () => Promise<QinziInteractionStickerPage[]>
+  createStickerPage: (
+    payload: Record<string, unknown>,
+    options?: { owner?: boolean },
+  ) => Promise<QinziInteractionStickerPage | null>
   listComments: (params: Record<string, string>) => Promise<QinziInteractionComment[]>
   saveComment: (payload: Record<string, unknown>) => Promise<QinziInteractionComment | null>
 }
@@ -171,6 +185,18 @@ qinziInteractionsWindow.QinziInteractions = {
       method: "DELETE",
       headers: ownerRequestHeaders(options?.owner),
     })
+  },
+  async listStickerPages() {
+    const payload = await qinziInteractionRequest<{ pages: QinziInteractionStickerPage[] }>("/api/sticker-pages")
+    return payload.pages ?? []
+  },
+  async createStickerPage(payload: Record<string, unknown>, options) {
+    const response = await qinziInteractionRequest<{ page: QinziInteractionStickerPage | null }>("/api/sticker-pages", {
+      method: "POST",
+      headers: ownerRequestHeaders(options?.owner),
+      body: JSON.stringify(payload),
+    })
+    return response.page ?? null
   },
   async listComments(params: Record<string, string>) {
     const searchParams = new URLSearchParams(params)

@@ -43,6 +43,15 @@ type StickerRow = {
   updated_at: string
 }
 
+type StickerPageRow = {
+  key: string
+  label: string
+  status: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 type CommentRow = {
   id: string
   date: string
@@ -67,6 +76,8 @@ const maxTextLength = 800
 const maxBoardLength = 96
 const maxAssetLength = 280
 const maxVisitorLength = 80
+const maxStickerPageLabelLength = 80
+const maxStickerPageKeyLength = 64
 
 function allowedOrigin(request: Request, env: Env) {
   const origin = request.headers.get("Origin") ?? "*"
@@ -163,6 +174,28 @@ function cleanBoardKey(value: unknown) {
   return key
 }
 
+function cleanStickerPageKey(value: unknown, { required = false } = {}) {
+  const key = cleanText(value, "key", maxStickerPageKeyLength, { required })
+  if (key && !/^[\w.-]+$/.test(key)) {
+    throw new HttpError(400, "key contains unsupported characters.")
+  }
+  if (key === "default") {
+    throw new HttpError(400, "default is reserved for the main sticker wall.")
+  }
+  return key
+}
+
+function makeStickerPageKey(label: string) {
+  const slug = label
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32)
+
+  return `${slug || "wall"}-${crypto.randomUUID().slice(0, 8)}`
+}
+
 function cleanVisitorId(value: unknown, { required = true } = {}) {
   const visitorId = cleanText(value, "visitorId", maxVisitorLength, { required })
   if (visitorId && !/^[\w:.-]+$/.test(visitorId)) {
@@ -226,6 +259,17 @@ function mapSticker(row: StickerRow) {
   }
 }
 
+function mapStickerPage(row: StickerPageRow) {
+  return {
+    key: row.key,
+    label: row.label,
+    status: row.status,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
 function mapComment(row: CommentRow) {
   return {
     id: row.id,
@@ -255,6 +299,41 @@ async function listStickers(request: Request, env: Env, url: URL) {
     .all<StickerRow>()
 
   return json(request, env, 200, { stickers: (rows.results ?? []).map(mapSticker) })
+}
+
+async function listStickerPages(request: Request, env: Env) {
+  const rows = await env.DB.prepare(
+    `
+      SELECT *
+      FROM sticker_pages
+      WHERE status = 'active'
+      ORDER BY sort_order ASC, created_at ASC
+      LIMIT 100
+    `,
+  ).all<StickerPageRow>()
+
+  return json(request, env, 200, { pages: (rows.results ?? []).map(mapStickerPage) })
+}
+
+async function createStickerPage(request: Request, env: Env) {
+  requireAdmin(request, env)
+  const payload = await readJson<Record<string, unknown>>(request)
+  const label = cleanText(payload.label, "label", maxStickerPageLabelLength, { required: true })
+  const key = cleanStickerPageKey(payload.key) || makeStickerPageKey(label)
+  const orderRow = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM sticker_pages")
+    .first<{ next_order: number }>()
+
+  await env.DB.prepare(
+    `
+      INSERT INTO sticker_pages (key, label, sort_order)
+      VALUES (?, ?, ?)
+    `,
+  )
+    .bind(key, label, Number(orderRow?.next_order ?? 1))
+    .run()
+
+  const row = await env.DB.prepare("SELECT * FROM sticker_pages WHERE key = ?").bind(key).first<StickerPageRow>()
+  return json(request, env, 201, { page: row ? mapStickerPage(row) : null })
 }
 
 async function createSticker(request: Request, env: Env) {
@@ -315,7 +394,7 @@ async function updateSticker(request: Request, env: Env, id: string) {
     if (!admin) {
       throw new HttpError(403, "This calendar board can only be changed by the owner.")
     }
-  } else if (existing.visitor_id !== visitorId) {
+  } else if (!admin && existing.visitor_id !== visitorId) {
     throw new HttpError(404, "Sticker was not found or cannot be edited by this visitor.")
   }
 
@@ -356,7 +435,7 @@ async function deleteSticker(request: Request, env: Env, id: string, url: URL) {
     if (!admin) {
       throw new HttpError(403, "This calendar board can only be changed by the owner.")
     }
-  } else if (existing.visitor_id !== visitorId) {
+  } else if (!admin && existing.visitor_id !== visitorId) {
     throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
   }
 
@@ -502,6 +581,15 @@ async function handleRequest(request: Request, env: Env) {
     }
     if (request.method === "POST") {
       return createSticker(request, env)
+    }
+  }
+
+  if (pathname === "/api/sticker-pages") {
+    if (request.method === "GET") {
+      return listStickerPages(request, env)
+    }
+    if (request.method === "POST") {
+      return createStickerPage(request, env)
     }
   }
 

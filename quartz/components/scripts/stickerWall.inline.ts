@@ -17,6 +17,12 @@ type PlacedSticker = StickerAsset & {
   visitorId?: string
 }
 
+type StickerPage = {
+  key: string
+  label: string
+  local?: boolean
+}
+
 type StickerBoardState = {
   board: HTMLElement
   controlId: string
@@ -42,6 +48,8 @@ type StickerInteractionsClient = {
     options?: { owner?: boolean },
   ) => Promise<PlacedSticker | null>
   deleteSticker: (id: string, options?: { owner?: boolean }) => Promise<void>
+  listStickerPages: () => Promise<StickerPage[]>
+  createStickerPage: (payload: Record<string, unknown>, options?: { owner?: boolean }) => Promise<StickerPage | null>
 }
 
 const stickerWallStorageKey = "qinzi27-sticker-wall-v1"
@@ -99,6 +107,25 @@ function saveUploadedAssets(storageKey: string, assets: StickerAsset[]) {
   localStorage.setItem(getUploadStorageKey(storageKey), JSON.stringify(assets))
 }
 
+function getPageStorageKey(storageKey: string) {
+  return `${storageKey}:pages`
+}
+
+function readLocalStickerPages(storageKey: string): StickerPage[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(getPageStorageKey(storageKey)) ?? "[]") as StickerPage[]
+    return Array.isArray(parsed)
+      ? parsed.filter((page) => typeof page.key === "string" && typeof page.label === "string")
+      : []
+  } catch {
+    return []
+  }
+}
+
+function saveLocalStickerPages(storageKey: string, pages: StickerPage[]) {
+  localStorage.setItem(getPageStorageKey(storageKey), JSON.stringify(pages))
+}
+
 function getStickerInteractionsClient() {
   return (window as Window & { QinziInteractions?: StickerInteractionsClient }).QinziInteractions
 }
@@ -111,7 +138,11 @@ function canShareAsset(asset: StickerAsset) {
   return asset.src.startsWith("/assets/stickers/") || asset.src.startsWith("/assets/couple-calendar-stickers/")
 }
 
-function canEditSticker(sticker: PlacedSticker, ownerOnly = false, ownerUnlocked = false) {
+function canEditSticker(sticker: PlacedSticker, ownerOnly = false, ownerUnlocked = false, adminUnlocked = false) {
+  if (adminUnlocked) {
+    return true
+  }
+
   if (ownerOnly) {
     return ownerUnlocked
   }
@@ -194,11 +225,12 @@ function renderSticker(
   stickers: PlacedSticker[],
   ownerOnly = false,
   ownerUnlocked = false,
+  adminUnlocked = false,
   onStickersChanged?: () => void,
   onStickerMoved?: (sticker: PlacedSticker) => void,
   onStickerDeleted?: (sticker: PlacedSticker) => void,
 ) {
-  const editable = canEditSticker(sticker, ownerOnly, ownerUnlocked)
+  const editable = canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)
   const item = document.createElement("button")
   item.type = "button"
   item.className = "sticker-wall-item"
@@ -222,7 +254,7 @@ function renderSticker(
   let activePointer: number | null = null
 
   item.addEventListener("pointerdown", (event) => {
-    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
+    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
       return
     }
 
@@ -255,7 +287,7 @@ function renderSticker(
   })
 
   item.addEventListener("dblclick", () => {
-    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
+    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
       return
     }
 
@@ -423,6 +455,39 @@ function renderMonthPreview(
   })
 }
 
+function renderPageTabs(
+  container: HTMLElement | null,
+  states: StickerBoardState[],
+  activeState: StickerBoardState,
+  onSelect: (state: StickerBoardState) => void,
+) {
+  if (!container) {
+    return
+  }
+
+  container.innerHTML = ""
+  states.forEach((state) => {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "sticker-page-button"
+    button.setAttribute("aria-pressed", state.key === activeState.key ? "true" : "false")
+
+    if (state.key === activeState.key) {
+      button.classList.add("is-active")
+    }
+
+    const label = document.createElement("span")
+    label.textContent = state.label
+
+    const count = document.createElement("small")
+    count.textContent = `${state.stickers.length}`
+
+    button.append(label, count)
+    button.addEventListener("click", () => onSelect(state))
+    container.append(button)
+  })
+}
+
 function renderUploadStage(
   stage: HTMLElement | null,
   storageKey: string,
@@ -504,11 +569,16 @@ function initStickerWall(root: HTMLElement) {
   const stage = root.querySelector<HTMLElement>("[data-sticker-stage]")
   const categoryFilter = root.querySelector<HTMLElement>("[data-sticker-categories]")
   const monthPreview = root.querySelector<HTMLElement>("[data-sticker-month-preview]")
+  const pageTabs = root.querySelector<HTMLElement>("[data-sticker-pages]")
   const storageKey = getStorageKey(root)
   const baseAssets = readStickerAssets(root)
   const uploadedAssets = readUploadedAssets(storageKey)
+  const localPages = readLocalStickerPages(storageKey)
   const ownerOnly = root.dataset.stickerOwnerOnly === "true"
+  const adminEnabled = root.dataset.stickerAdmin === "true"
   let ownerUnlocked = !ownerOnly
+  let adminUnlocked = false
+  let activeBoardKey = localStorage.getItem(`${storageKey}:active-board`) ?? ""
   let selectedCategory = "all"
 
   if (boards.length === 0 || !addButton || !burstButton || !clearButton || baseAssets.length === 0) {
@@ -528,8 +598,16 @@ function initStickerWall(root: HTMLElement) {
     return !ownerOnly || ownerUnlocked
   }
 
+  function hasAdminAccess() {
+    return adminEnabled && adminUnlocked
+  }
+
+  function hasPrivilegedAccess() {
+    return (ownerOnly && ownerUnlocked) || hasAdminAccess()
+  }
+
   function ownerRequestOptions() {
-    return ownerOnly && ownerUnlocked ? { owner: true } : undefined
+    return hasPrivilegedAccess() ? { owner: true } : undefined
   }
 
   async function validateOwnerKey(key: string) {
@@ -550,6 +628,9 @@ function initStickerWall(root: HTMLElement) {
     root.classList.toggle("is-owner-only", ownerOnly)
     root.classList.toggle("is-owner-locked", ownerOnly && !ownerUnlocked)
     root.classList.toggle("is-owner-unlocked", ownerOnly && ownerUnlocked)
+    root.classList.toggle("has-sticker-admin", adminEnabled)
+    root.classList.toggle("is-admin-locked", adminEnabled && !adminUnlocked)
+    root.classList.toggle("is-admin-unlocked", hasAdminAccess())
     ;[addButton, burstButton, clearButton, clearUploadsButton, uploadInput].forEach((control) => {
       if (control) {
         control.toggleAttribute("disabled", ownerOnly && !ownerUnlocked)
@@ -566,14 +647,16 @@ function initStickerWall(root: HTMLElement) {
 
   function setOwnerAccess(unlocked: boolean) {
     ownerUnlocked = !ownerOnly || unlocked
+    adminUnlocked = adminEnabled && unlocked
     updateOwnerClass()
     rerenderStateStickers()
+    updatePageTabs()
     updateMonthPreview()
     renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
   }
 
   function createOwnerPanel() {
-    if (!ownerOnly || root.querySelector("[data-sticker-owner-panel]")) {
+    if ((!ownerOnly && !adminEnabled) || root.querySelector("[data-sticker-owner-panel]")) {
       return
     }
 
@@ -585,7 +668,7 @@ function initStickerWall(root: HTMLElement) {
     label.className = "sticker-owner-key"
 
     const labelText = document.createElement("span")
-    labelText.textContent = "我的编辑"
+    labelText.textContent = adminEnabled ? "全局编辑" : "我的编辑"
 
     const input = document.createElement("input")
     input.type = "password"
@@ -607,8 +690,31 @@ function initStickerWall(root: HTMLElement) {
     const status = document.createElement("span")
     status.className = "sticker-owner-status"
 
+    const pageTools = document.createElement("div")
+    pageTools.className = "sticker-page-creator"
+
+    const pageInput = document.createElement("input")
+    pageInput.type = "text"
+    pageInput.maxLength = 80
+    pageInput.placeholder = "新页面名字"
+
+    const pageButton = document.createElement("button")
+    pageButton.type = "button"
+    pageButton.textContent = "新增页面"
+
+    const pageStatus = document.createElement("span")
+    pageStatus.className = "sticker-owner-status"
+    pageTools.append(pageInput, pageButton, pageStatus)
+
     const syncStatus = (message?: string) => {
-      status.textContent = message ?? (ownerUnlocked ? "可调整图标" : "只读")
+      if (message) {
+        status.textContent = message
+        return
+      }
+
+      status.textContent = adminEnabled ? (adminUnlocked ? "可全局编辑" : "访客模式") : ownerUnlocked ? "可调整图标" : "只读"
+      pageInput.disabled = !hasAdminAccess()
+      pageButton.disabled = !hasAdminAccess()
     }
 
     unlockButton.addEventListener("click", async () => {
@@ -648,12 +754,46 @@ function initStickerWall(root: HTMLElement) {
       syncStatus()
     })
 
+    pageButton.addEventListener("click", async () => {
+      const label = pageInput.value.trim()
+      if (!hasAdminAccess() || !label) {
+        return
+      }
+
+      pageButton.disabled = true
+      pageStatus.textContent = "创建中"
+      try {
+        const page = await createStickerPage(label)
+        if (page) {
+          ensurePageState(page, true)
+          selectBoardState(boardStates.find((state) => state.key === page.key) ?? getActiveBoardState())
+          pageInput.value = ""
+          pageStatus.textContent = "已创建"
+        }
+      } catch {
+        pageStatus.textContent = "创建失败"
+      } finally {
+        pageButton.disabled = !hasAdminAccess()
+      }
+    })
+
     panel.append(label, unlockButton, lockButton, status)
+    if (adminEnabled) {
+      panel.append(pageTools)
+    }
     root.insertBefore(panel, root.querySelector(".sticker-wall-toolbar") ?? root.firstChild)
     syncStatus()
   }
 
   function getActiveBoardState() {
+    if (pageTabs) {
+      if (!activeBoardKey || !boardStates.some((state) => state.key === activeBoardKey)) {
+        activeBoardKey = boardStates[0]?.key ?? ""
+      }
+
+      return boardStates.find((state) => state.key === activeBoardKey) ?? boardStates[0]
+    }
+
     return boardStates.find((state) => isVisibleBoard(state.board)) ?? boardStates[0]
   }
 
@@ -663,7 +803,24 @@ function initStickerWall(root: HTMLElement) {
       control.checked = true
       control.dispatchEvent(new Event("change", { bubbles: true }))
     }
+    if (pageTabs) {
+      activeBoardKey = state.key
+      localStorage.setItem(`${storageKey}:active-board`, activeBoardKey)
+      updatePageTabs()
+    }
     updateMonthPreview()
+  }
+
+  function updatePageTabs() {
+    if (!pageTabs) {
+      return
+    }
+
+    const activeState = getActiveBoardState()
+    boardStates.forEach((state) => {
+      state.board.hidden = state.key !== activeState.key
+    })
+    renderPageTabs(pageTabs, boardStates, activeState, selectBoardState)
   }
 
   function updateMonthPreview() {
@@ -679,21 +836,127 @@ function initStickerWall(root: HTMLElement) {
       state.stickers,
       ownerOnly,
       ownerUnlocked,
+      adminUnlocked,
       updateMonthPreview,
       (changed) => syncRemoteSticker(state, changed),
       (deleted) => deleteRemoteSticker(deleted),
     )
   }
 
+  function makeLocalPageKey(label: string) {
+    const slug =
+      label
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 28) || "wall"
+
+    return `local-${slug}-${Date.now().toString(36)}`
+  }
+
+  function attachBoardInteractions(state: StickerBoardState) {
+    state.board.addEventListener("dblclick", (event) => {
+      if (!hasOwnerAccess()) {
+        return
+      }
+
+      if (event.target !== state.board) {
+        return
+      }
+
+      const rect = state.board.getBoundingClientRect()
+      const x = ((event.clientX - rect.left) / rect.width) * 100
+      const y = ((event.clientY - rect.top) / rect.height) * 100
+      addRandomSticker(x, y, state)
+    })
+  }
+
+  function ensurePageState(page: StickerPage, shouldSelect = false) {
+    const existing = boardStates.find((state) => state.key === page.key)
+    if (existing) {
+      existing.label = page.label
+      if (shouldSelect) {
+        selectBoardState(existing)
+      }
+      updatePageTabs()
+      return existing
+    }
+
+    const board = document.createElement("div")
+    board.className = boards[0]?.className || "sticker-wall-board"
+    board.dataset.stickerBoard = ""
+    board.dataset.stickerBoardKey = page.key
+    board.dataset.stickerBoardLabel = page.label
+    board.setAttribute("aria-label", `${page.label} sticker board`)
+    board.hidden = Boolean(pageTabs)
+
+    const previousBoard = boardStates.at(-1)?.board
+    if (previousBoard) {
+      previousBoard.after(board)
+    } else {
+      root.append(board)
+    }
+
+    const state = getBoardState(storageKey, board, boardStates.length, boardStates.length + 1)
+    boardStates.push(state)
+    state.layer.innerHTML = ""
+    state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
+    attachBoardInteractions(state)
+    void loadRemoteStickers(state)
+
+    if (shouldSelect) {
+      selectBoardState(state)
+    } else {
+      updatePageTabs()
+    }
+
+    return state
+  }
+
+  async function createStickerPage(label: string) {
+    const client = getStickerInteractionsClient()
+    if (client?.enabled) {
+      return client.createStickerPage({ label }, { owner: true })
+    }
+
+    const page = { key: makeLocalPageKey(label), label, local: true }
+    localPages.push(page)
+    saveLocalStickerPages(storageKey, localPages)
+    return page
+  }
+
+  async function loadStickerPages() {
+    if (!pageTabs) {
+      return
+    }
+
+    localPages.forEach((page) => ensurePageState(page))
+    const client = getStickerInteractionsClient()
+    if (!client?.enabled) {
+      updatePageTabs()
+      return
+    }
+
+    try {
+      const pages = await client.listStickerPages()
+      pages.forEach((page) => ensurePageState(page))
+      updatePageTabs()
+    } catch (error) {
+      console.warn("[StickerWall] Failed to load sticker pages", error)
+    }
+  }
+
   function syncLocalState(state: StickerBoardState) {
     savePlacedStickers(state.storageKey, state.stickers)
+    updatePageTabs()
     updateMonthPreview()
   }
 
   function syncRemoteSticker(state: StickerBoardState, sticker: PlacedSticker) {
     syncLocalState(state)
     const client = getStickerInteractionsClient()
-    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
       return
     }
 
@@ -704,7 +967,7 @@ function initStickerWall(root: HTMLElement) {
 
   function deleteRemoteSticker(sticker: PlacedSticker) {
     const client = getStickerInteractionsClient()
-    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked)) {
+    if (!client?.enabled || !sticker.remote || !canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
       return
     }
 
@@ -805,11 +1068,14 @@ function initStickerWall(root: HTMLElement) {
   }
 
   updateCategoryFilter()
+  updatePageTabs()
   updateMonthPreview()
   renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
+  boardStates.forEach(attachBoardInteractions)
   boardStates.forEach((state) => {
     void loadRemoteStickers(state)
   })
+  void loadStickerPages()
   addButton.addEventListener("click", () => {
     if (hasOwnerAccess()) {
       addRandomSticker()
@@ -832,8 +1098,8 @@ function initStickerWall(root: HTMLElement) {
     }
 
     const state = getActiveBoardState()
-    const removed = state.stickers.filter((sticker) => canEditSticker(sticker, ownerOnly, ownerUnlocked))
-    const kept = state.stickers.filter((sticker) => !canEditSticker(sticker, ownerOnly, ownerUnlocked))
+    const removed = state.stickers.filter((sticker) => canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked))
+    const kept = state.stickers.filter((sticker) => !canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked))
     replaceStateStickers(state, kept)
     removed.forEach(deleteRemoteSticker)
   })
@@ -872,22 +1138,6 @@ function initStickerWall(root: HTMLElement) {
     control.addEventListener("change", updateMonthPreview)
   })
 
-  boardStates.forEach((state) => {
-    state.board.addEventListener("dblclick", (event) => {
-      if (!hasOwnerAccess()) {
-        return
-      }
-
-      if (event.target !== state.board) {
-        return
-      }
-
-      const rect = state.board.getBoundingClientRect()
-      const x = ((event.clientX - rect.left) / rect.width) * 100
-      const y = ((event.clientY - rect.top) / rect.height) * 100
-      addRandomSticker(x, y, state)
-    })
-  })
 }
 
 function initStickerWalls() {

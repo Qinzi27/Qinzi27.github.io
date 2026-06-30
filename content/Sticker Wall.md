@@ -13,8 +13,9 @@ summary: "A lightweight GIF sticker wall that pulls random stickers from the sit
 
 # GIF Sticker Wall
 
-<div class="sticker-wall" data-sticker-wall>
+<div class="sticker-wall" data-sticker-wall data-sticker-admin="true" data-sticker-storage-key="qinzi27-sticker-wall-v1">
   <p class="sticker-wall-links"><a href="./sticker-categories">查看分类预览</a></p>
+  <div class="sticker-wall-pages" data-sticker-pages aria-label="Sticker wall pages"></div>
   <div class="sticker-category-filter" data-sticker-categories aria-label="Sticker categories"></div>
   <div class="sticker-wall-toolbar" aria-label="Sticker wall controls">
     <button type="button" data-sticker-add>随机贴一张</button>

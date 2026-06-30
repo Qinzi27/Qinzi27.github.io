@@ -947,6 +947,54 @@ code {
   color: #2f6b5b;
 }
 
+.sticker-wall-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sticker-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  min-height: 2.2rem;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid rgba(121, 166, 171, 0.32);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  color: #3f5f61;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sticker-page-button:hover {
+  border-color: rgba(47, 107, 91, 0.46);
+  background: rgba(223, 246, 235, 0.74);
+}
+
+.sticker-page-button.is-active,
+.sticker-page-button[aria-pressed="true"] {
+  border-color: #2f6b5b;
+  background: #2f6b5b;
+  color: white;
+}
+
+.sticker-page-button small {
+  min-width: 1.35rem;
+  padding: 0.12rem 0.32rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: inherit;
+  font-family: var(--codeFont);
+  font-size: 0.72rem;
+  line-height: 1;
+  text-align: center;
+}
+
 .sticker-category-filter,
 .sticker-category-index {
   display: flex;
@@ -1319,6 +1367,28 @@ code {
 
 .sticker-owner-panel button:hover {
   background: rgba(223, 246, 235, 0.82);
+}
+
+.sticker-page-creator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sticker-page-creator input {
+  width: min(14rem, 54vw);
+  padding: 0.43rem 0.56rem;
+  border: 1px solid rgba(121, 166, 171, 0.36);
+  border-radius: 0.42rem;
+  background: rgba(255, 255, 255, 0.92);
+  font: inherit;
+}
+
+.sticker-owner-panel button:disabled,
+.sticker-page-creator input:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .sticker-owner-status {
