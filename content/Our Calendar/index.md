@@ -3659,13 +3659,13 @@ summary: "A private calendar for shared daily moments."
               <span class="calendar-comment-icon" aria-hidden="true">记</span>
             </button>
           </div>
-          <div class="couple-day has-note is-note-day" data-calendar-day data-calendar-date="2026-07-02" data-calendar-attribute="note" data-calendar-has-sleep="false">
+          <div class="couple-day has-note is-rest-day" data-calendar-day data-calendar-date="2026-07-02" data-calendar-attribute="rest" data-calendar-has-sleep="true" data-calendar-sleep-time="02:00">
             <a class="couple-day-link" href="#2026-07-02">
               <span class="couple-day-head">
                 <b>2</b>
-                <span class="calendar-attribute-chip calendar-attribute-note">记录</span>
+                <span class="calendar-attribute-chip calendar-attribute-rest">休息</span>
+                <span class="calendar-sleep-pill">02:00</span>
               </span>
-              <strong class="calendar-title-preview">晚上还有工作打扰好烦</strong>
               <span class="calendar-whisper-preview">晚上还有工作打扰好烦</span>
               <em>暴雨</em>
             </a>
@@ -3953,6 +3953,7 @@ summary: "A private calendar for shared daily moments."
 
 <p class="daily-entry-meta">天气：暴雨</p>
 
+<p class="sleep-entry">宝宝02:00睡着</p>
 
 <div class="daily-whispers">
   <p>碎碎念</p>
