@@ -253,11 +253,12 @@ function parseEntries(source) {
     const sections = parseSubsections(sectionBlock)
     const sleep = meta.sleep || meta.睡眠 || meta.睡着 || ""
     const notes = firstNonEmpty([sections["碎碎念"], sections["小碎念"], meta.notes, meta.碎碎念])
+    const explicitTitle = meta.title || meta.标题 || ""
     const sentence = sections["今天的一句话"] ?? ""
     const together = sections["我们一起"] ?? ""
     const remember = sections["想记住"] ?? ""
     const title =
-      meta.title || meta.标题 || firstUsefulLine(notes) || firstUsefulLine(sentence) || (sleep ? sleepText(sleep) : "有记录")
+      explicitTitle || firstUsefulLine(notes) || firstUsefulLine(sentence) || (sleep ? sleepText(sleep) : "有记录")
     const stickers = String(meta.stickers || meta.表情 || "")
       .split(/[,，、]/)
       .map((item) => item.trim().toLowerCase())
@@ -266,6 +267,7 @@ function parseEntries(source) {
     entries.push({
       date,
       title,
+      explicitTitle,
       sleep,
       mood: meta.mood || meta.心情 || "",
       weather: meta.weather || meta.天气 || "",
@@ -353,18 +355,19 @@ function makeCalendarDay(date, day, entry, outside = false) {
   }
 
   const sleepLabel = sleepTime ? `    <span class="calendar-sleep-pill">${escapeHtml(sleepTime)}</span>` : ""
-  const summary =
+  const titlePreview = entry.explicitTitle || (!entry.sleep ? entry.title : "")
+  const whisperPreview =
     noteItems(entry.notes).slice(0, 2).join(" / ") ||
     firstUsefulLine(entry.sentence) ||
     firstUsefulLine(entry.together) ||
-    firstUsefulLine(entry.remember) ||
-    (!entry.sleep ? entry.title : "")
+    firstUsefulLine(entry.remember)
   const detail = firstNonEmpty([entry.mood, entry.tags, entry.weather])
   return [
     `<div class="couple-day has-note is-${attribute.key}-day" ${dataAttributes}>`,
     `  <a class="couple-day-link" href="#${date}">`,
     dayHead(sleepLabel).replace(/^/gm, "  "),
-    summary ? `    <strong class="calendar-whisper-preview">${escapeHtml(summary)}</strong>` : "",
+    titlePreview ? `    <strong class="calendar-title-preview">${escapeHtml(titlePreview)}</strong>` : "",
+    whisperPreview ? `    <span class="calendar-whisper-preview">${escapeHtml(whisperPreview)}</span>` : "",
     detail ? `    <em>${escapeHtml(detail)}</em>` : "",
     "  </a>",
     commentButton,
@@ -610,6 +613,14 @@ function makeWhisperBlock(entry) {
   ].join("\n")
 }
 
+function makeTitleBlock(entry) {
+  if (!entry.explicitTitle) {
+    return ""
+  }
+
+  return `<p class="daily-entry-title">${escapeHtml(entry.explicitTitle)}</p>`
+}
+
 function makeEntryBlock(entries, stickerIndex) {
   if (entries.length === 0) {
     return [ENTRY_START_MARKER, "还没有每日记录。", ENTRY_END_MARKER].join("\n")
@@ -629,6 +640,11 @@ function makeEntryBlock(entries, stickerIndex) {
 
       if (stickerLine) {
         lines.push(stickerLine, "")
+      }
+
+      const titleBlock = makeTitleBlock(entry)
+      if (titleBlock) {
+        lines.push(titleBlock, "")
       }
 
       if (entry.sleep) {

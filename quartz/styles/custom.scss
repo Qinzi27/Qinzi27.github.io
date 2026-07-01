@@ -609,11 +609,19 @@ code {
   font-size: 0.84rem;
 }
 
+.calendar-title-preview {
+  color: #2f6b5b;
+  font-weight: 900;
+}
+
 .calendar-whisper-preview {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  color: #68716d;
+  font-size: 0.76rem;
+  line-height: 1.25;
 }
 
 .couple-day em {
@@ -872,6 +880,14 @@ code {
   gap: 0.45rem;
   align-items: center;
   margin: 0.4rem 0 0.9rem;
+}
+
+.daily-entry-title {
+  margin: 0.2rem 0 0.7rem;
+  color: #2f6b5b;
+  font-size: 1.02rem;
+  font-weight: 850;
+  line-height: 1.35;
 }
 
 .sleep-entry {
