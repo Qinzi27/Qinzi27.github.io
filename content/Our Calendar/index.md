@@ -3688,10 +3688,16 @@ summary: "A private calendar for shared daily moments."
               <span class="calendar-comment-icon" aria-hidden="true">记</span>
             </button>
           </div>
-          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-04" data-calendar-attribute="empty" data-calendar-has-sleep="false">
-            <span class="couple-day-head">
-              <b>4</b>
-            </span>
+          <div class="couple-day has-note is-rest-day" data-calendar-day data-calendar-date="2026-07-04" data-calendar-attribute="rest" data-calendar-has-sleep="true" data-calendar-sleep-time="00:50">
+            <a class="couple-day-link" href="#2026-07-04">
+              <span class="couple-day-head">
+                <b>4</b>
+                <span class="calendar-attribute-chip calendar-attribute-rest">休息</span>
+                <span class="calendar-sleep-pill">00:50</span>
+              </span>
+              <strong class="calendar-title-preview">永远是我的老婆</strong>
+              <span class="calendar-whisper-preview">宝宝要给我拍视频</span>
+            </a>
             <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-04" aria-label="编辑 2026-07-04 的评论">
               <span class="calendar-comment-dot" aria-hidden="true"></span>
               <span class="calendar-comment-icon" aria-hidden="true">记</span>
@@ -3953,6 +3959,19 @@ summary: "A private calendar for shared daily moments."
 ## 每日记录
 
 <!-- calendar-entries:start -->
+
+## 2026-07-04
+
+<p class="daily-entry-title">永远是我的老婆</p>
+
+<p class="sleep-entry">宝宝00:50睡着</p>
+
+<div class="daily-whispers">
+  <p>碎碎念</p>
+  <ul>
+    <li>宝宝要给我拍视频</li>
+  </ul>
+</div>
 
 ## 2026-07-03
 
