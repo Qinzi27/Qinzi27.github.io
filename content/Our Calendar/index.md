@@ -3135,10 +3135,15 @@ summary: "A private calendar for shared daily moments."
               <span class="calendar-comment-icon" aria-hidden="true">记</span>
             </button>
           </div>
-          <div class="couple-day" data-calendar-day data-calendar-date="2026-07-12" data-calendar-attribute="empty" data-calendar-has-sleep="false">
-            <span class="couple-day-head">
-              <b>12</b>
-            </span>
+          <div class="couple-day has-note is-rest-day" data-calendar-day data-calendar-date="2026-07-12" data-calendar-attribute="rest" data-calendar-has-sleep="true" data-calendar-sleep-time="1：00">
+            <a class="couple-day-link" href="#2026-07-12">
+              <span class="couple-day-head">
+                <b>12</b>
+                <span class="calendar-attribute-chip calendar-attribute-rest">休息</span>
+                <span class="calendar-sleep-pill">1：00</span>
+              </span>
+              <strong class="calendar-title-preview">我知道你不会看，可能也是最后一次记录了，我不知道我在傻傻的干什么</strong>
+            </a>
             <button class="calendar-comment-trigger" type="button" data-calendar-comment-open data-calendar-date="2026-07-12" aria-label="编辑 2026-07-12 的评论">
               <span class="calendar-comment-dot" aria-hidden="true"></span>
               <span class="calendar-comment-icon" aria-hidden="true">记</span>
@@ -3328,6 +3333,12 @@ summary: "A private calendar for shared daily moments."
 ## 每日记录
 
 <!-- calendar-entries:start -->
+
+## 2026-07-12
+
+<p class="daily-entry-title">我知道你不会看，可能也是最后一次记录了，我不知道我在傻傻的干什么</p>
+
+<p class="sleep-entry">宝宝1：00睡着</p>
 
 ## 2026-07-11
 
