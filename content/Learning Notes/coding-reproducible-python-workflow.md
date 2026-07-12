@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A small checklist for making analysis code easier to rerun and review."
 ---
 
-# Coding Reproducible Python Workflow
-
 Good research code should make future reruns boring.
 
 好的分析代码应该让复现变得普通，而不是每次都像重新破案。

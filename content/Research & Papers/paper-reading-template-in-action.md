@@ -2,14 +2,12 @@
 title: "Paper Reading Template In Action"
 date: "2026-06-27"
 type: "paper-reading"
-tags: ["paper-reading", "research-methods", "bioinformatics"]
 status: "example"
 publish: true
 privacy: "public"
+unlisted: true
 summary: "An example paper reading note showing how to capture questions, methods, and reusable ideas."
 ---
-
-# Paper Reading Template In Action
 
 This is an example paper note. Replace the placeholder paper with a real paper when writing.
 

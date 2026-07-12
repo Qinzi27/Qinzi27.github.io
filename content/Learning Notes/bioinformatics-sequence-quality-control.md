@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A first reusable note on why sequence quality control matters before downstream analysis."
 ---
 
-# Bioinformatics Sequence Quality Control
-
 Quality control is the habit of asking whether the data are trustworthy before interpreting biological signal.
 
 测序数据分析的第一步不是立刻跑差异分析，而是先确认数据是否可靠、是否有明显异常、是否适合进入下游流程。

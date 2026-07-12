@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A public roadmap for organizing PhD preparation through learning notes, papers, and project logs."
 ---
 
-# PhD Preparation Roadmap
-
 This page tracks a public, high-level roadmap for PhD preparation.
 
 这个页面只放公开安全的方向和结构，具体个人材料应放在未发布位置。

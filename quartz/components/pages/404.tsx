@@ -4,12 +4,24 @@ import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } fro
 const NotFound: QuartzComponent = ({ cfg, ctx }: QuartzComponentProps) => {
   const url = new URL(`https://${cfg.baseUrl ?? "example.com"}`)
   const baseDir = ctx.argv.serve ? "/" : url.pathname
+  const rootHref = baseDir.endsWith("/") ? baseDir : `${baseDir}/`
+  const constructionHref = `${rootHref}under-construction`
 
   return (
-    <article class="popover-hint">
-      <h1>404</h1>
-      <p>{i18n(cfg.locale).pages.error.notFound}</p>
-      <a href={baseDir}>{i18n(cfg.locale).pages.error.home}</a>
+    <article class="popover-hint not-found-page">
+      <p class="not-found-code" aria-label="Error 404">
+        404
+      </p>
+      <h1>这条小路还没有铺好</h1>
+      <p>这个页面不存在、尚未公开，或仍在施工中。</p>
+      <div class="not-found-actions">
+        <a class="construction-link construction-link--primary" href={rootHref}>
+          {i18n(cfg.locale).pages.error.home}
+        </a>
+        <a class="construction-link" href={constructionHref}>
+          查看施工区
+        </a>
+      </div>
       <script
         dangerouslySetInnerHTML={{
           __html: `

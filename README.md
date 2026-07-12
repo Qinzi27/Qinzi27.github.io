@@ -47,6 +47,7 @@ It can also publish encrypted pages for private sharing:
 publish: true
 privacy: protected
 passwordEnv: PARENT_CALENDAR_PASSWORD
+calendarAccessTokenEnv: CALENDAR_ACCESS_TOKEN
 unlisted: true
 ```
 
@@ -110,12 +111,26 @@ npm run preview
 
 This runs the privacy check, installs Quartz plugins from `quartz.config.yaml`, and starts a local Quartz preview server.
 
-For protected pages, set the password environment variable first:
+For protected pages, keep the password in the ignored `.env.local` file:
+
+```dotenv
+PARENT_CALENDAR_PASSWORD="your-password-here"
+CALENDAR_ACCESS_TOKEN="a-separate-random-token"
+```
+
+Generate the local calendar token once without printing its value:
 
 ```powershell
-$env:PARENT_CALENDAR_PASSWORD = "your-password-here"
+npm.cmd run calendar-token:setup
+```
+
+Then start the preview:
+
+```bash
 npm run preview
 ```
+
+An existing shell or CI environment variable takes precedence over `.env.local`.
 
 ## Couple Calendar Stickers
 
@@ -181,7 +196,11 @@ https://qinzi27-interactions.qinzi27.workers.dev
 
 If the URL is empty or the Worker is unavailable, sticker placement and comments fall back to local browser storage.
 
-The Worker secret `ADMIN_TOKEN` is for moderation endpoints only. Do not commit it. A local copy can be kept under `content/private/`.
+The calendar password is used only for browser-side AES-GCM decryption. After a successful unlock, the decrypted page supplies a separate in-memory `CALENDAR_ACCESS_TOKEN`; this lets the password holder edit shared comments and `YYYY-MM` sticker boards through the Worker without receiving moderation access.
+
+The Worker secret `ADMIN_TOKEN` is for moderation endpoints only. `VISITOR_SIGNING_SECRET` signs public-wall visitor sessions, and `CALENDAR_ACCESS_TOKEN` is limited to the protected calendar. Do not commit any of them.
+
+Before publishing this authentication change, set the same `CALENDAR_ACCESS_TOKEN` in GitHub Actions and Cloudflare, deploy the Worker first, then push the site.
 
 ## Build
 
@@ -190,6 +209,7 @@ npm run build
 ```
 
 The build writes the generated static site to `public/`.
+Local builds automatically read the same ignored `.env.local` file as the preview workflow.
 
 ## Commit And Publish
 

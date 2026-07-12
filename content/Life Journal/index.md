@@ -9,8 +9,6 @@ privacy: "public"
 summary: "Selected public life writing: weekly reviews, fitness, travel, reading, thoughts, and growth."
 ---
 
-# Life Journal
-
 This section is for selected life content that is safe and useful to publish.
 
 这里不是完整私人日记，而是经过筛选的公开记录：周复盘、训练、旅行、阅读、想法和个人成长。

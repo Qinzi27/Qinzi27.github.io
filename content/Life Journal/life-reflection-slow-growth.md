@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A bilingual reflection on slow growth, learning, and building durable systems."
 ---
 
-# Life Reflection: Slow Growth
-
 Slow growth is still growth.
 
 慢慢来并不等于停滞。很多长期能力不是靠一次爆发建立的，而是靠稳定重复和及时复盘。
@@ -31,5 +29,5 @@ The same principle applies to research:
 
 ## Related
 
-- [[Weekly Review Example]]
+- [[2026-weekly-review-example|Weekly Review Example]]
 - [[Projects]]

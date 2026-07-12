@@ -12,21 +12,53 @@
   --garden-cream: #fff8df;
   --garden-shadow: 0 18px 45px rgba(78, 104, 111, 0.13);
   --garden-border: rgba(121, 166, 171, 0.3);
+  --garden-quote-end: rgba(255, 255, 255, 0.72);
+}
+
+:root[saved-theme="dark"] {
+  --garden-paper: rgba(27, 30, 27, 0.88);
+  --garden-paper-strong: rgba(23, 25, 23, 0.96);
+  --garden-blue: #20343d;
+  --garden-blue-strong: #315361;
+  --garden-mint: #20362f;
+  --garden-blush: #3b2930;
+  --garden-cream: #3a3423;
+  --garden-shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  --garden-border: rgba(143, 199, 181, 0.26);
+  --garden-quote-end: rgba(43, 46, 43, 0.94);
 }
 
 html {
   background:
-    radial-gradient(circle at 8% 8%, rgba(158, 215, 245, 0.34), transparent 24rem),
-    radial-gradient(circle at 86% 10%, rgba(255, 232, 239, 0.54), transparent 22rem),
-    radial-gradient(circle at 78% 78%, rgba(223, 246, 235, 0.42), transparent 20rem),
+    radial-gradient(
+      circle at 8% 8%,
+      rgba(158, 215, 245, 0.34),
+      transparent 24rem
+    ),
+    radial-gradient(
+      circle at 86% 10%,
+      rgba(255, 232, 239, 0.54),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 78% 78%,
+      rgba(223, 246, 235, 0.42),
+      transparent 20rem
+    ),
     var(--light);
 }
 
 body {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
-    radial-gradient(circle at 18px 18px, rgba(114, 169, 188, 0.12) 1.4px, transparent 1.6px);
-  background-size: auto, 34px 34px;
+    radial-gradient(
+      circle at 18px 18px,
+      rgba(114, 169, 188, 0.12) 1.4px,
+      transparent 1.6px
+    );
+  background-size:
+    auto,
+    34px 34px;
 }
 
 body::before,
@@ -58,7 +90,11 @@ body::after {
   bottom: 8vh;
   border-radius: 44% 56% 62% 38%;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(223, 242, 255, 0.56)),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(223, 242, 255, 0.56)
+    ),
     var(--garden-blue);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.74);
 }
@@ -249,7 +285,11 @@ blockquote {
   border-left: 0;
   border-radius: 1rem;
   padding: 1rem 1.1rem;
-  background: linear-gradient(135deg, var(--garden-blue), rgba(255, 255, 255, 0.72));
+  background: linear-gradient(
+    135deg,
+    var(--garden-blue),
+    var(--garden-quote-end)
+  );
 }
 
 pre,
@@ -271,8 +311,16 @@ code {
   border: 1px solid rgba(121, 166, 171, 0.24);
   border-radius: 1.35rem;
   background:
-    radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.95), transparent 0 7rem),
-    radial-gradient(circle at 80% 84%, rgba(255, 232, 239, 0.72), transparent 0 9rem),
+    radial-gradient(
+      circle at 86% 18%,
+      rgba(255, 255, 255, 0.95),
+      transparent 0 7rem
+    ),
+    radial-gradient(
+      circle at 80% 84%,
+      rgba(255, 232, 239, 0.72),
+      transparent 0 9rem
+    ),
     linear-gradient(135deg, rgba(223, 242, 255, 0.9), rgba(255, 248, 223, 0.72));
 }
 
@@ -333,14 +381,33 @@ code {
   border: 1px solid rgba(121, 166, 171, 0.24);
   border-radius: 1.15rem;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(223, 242, 255, 0.38)),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(223, 242, 255, 0.38)
+    ),
     white;
   box-shadow: 0 12px 28px rgba(68, 98, 104, 0.08);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
 }
 
 .garden-card:hover {
   transform: translateY(-2px);
+  border-color: rgba(121, 166, 171, 0.48);
   box-shadow: 0 18px 36px rgba(68, 98, 104, 0.13);
+}
+
+.garden-card--building {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 248, 223, 0.92),
+      rgba(255, 232, 239, 0.38)
+    ),
+    var(--light);
 }
 
 .garden-card span {
@@ -380,6 +447,177 @@ code {
   margin: 0.35rem 0 0;
 }
 
+.construction-hero {
+  position: relative;
+  overflow: hidden;
+  margin: 0.4rem 0 1.8rem;
+  padding: clamp(1.35rem, 4vw, 2.25rem);
+  border: 1px solid rgba(216, 181, 106, 0.42);
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(
+      circle at 90% 16%,
+      rgba(255, 255, 255, 0.82),
+      transparent 0 8rem
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 248, 223, 0.92),
+      rgba(255, 232, 239, 0.58)
+    );
+}
+
+.construction-hero h2 {
+  max-width: 38rem;
+  margin-top: 0.25rem;
+  border-top: 0;
+  line-height: 1.2;
+}
+
+.construction-hero > p:not(.construction-kicker) {
+  max-width: 42rem;
+}
+
+.construction-kicker {
+  margin: 0;
+  color: #8b6f3d;
+  font-family: var(--codeFont);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.construction-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  width: fit-content;
+  margin-top: 1.1rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--light) 82%, transparent);
+  color: var(--darkgray);
+  font-size: 0.88rem;
+}
+
+.construction-status > span:first-child {
+  color: #56a276;
+  font-size: 0.72rem;
+}
+
+.construction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 1.1rem 0 1.5rem;
+}
+
+.construction-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(121, 166, 171, 0.25);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--light) 90%, var(--garden-blue));
+  box-shadow: 0 10px 24px rgba(68, 98, 104, 0.07);
+}
+
+.construction-card h3 {
+  margin-top: 0.75rem;
+}
+
+.construction-card p {
+  margin-bottom: 0;
+  color: var(--darkgray);
+  font-size: 0.94rem;
+}
+
+.construction-badge {
+  display: inline-flex;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--garden-cream) 84%, var(--light));
+  color: #8b6f3d;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.construction-actions,
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+}
+
+.construction-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.65rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(121, 166, 171, 0.38);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--light) 90%, var(--garden-blue));
+  font-weight: 750;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.construction-link:hover {
+  transform: translateY(-1px);
+}
+
+.construction-link--primary {
+  border-color: var(--secondary);
+  background: var(--secondary);
+  color: var(--light);
+}
+
+.construction-link--primary:hover {
+  color: var(--light);
+}
+
+.not-found-page {
+  display: grid;
+  justify-items: center;
+  max-width: 42rem;
+  margin: clamp(3rem, 12vh, 8rem) auto;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  text-align: center;
+}
+
+.not-found-page h1 {
+  margin-top: 0.25rem;
+}
+
+.not-found-page > p:not(.not-found-code) {
+  max-width: 32rem;
+  color: var(--darkgray);
+}
+
+.not-found-code {
+  margin: 0;
+  color: color-mix(in srgb, var(--secondary) 68%, var(--gray));
+  font-family: var(--codeFont);
+  font-size: clamp(3.8rem, 15vw, 8rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 0.85;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--secondary) 58%, white);
+  outline-offset: 3px;
+}
+
 .couple-month-pager {
   margin: 1rem 0 2rem;
 }
@@ -390,6 +628,12 @@ code {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.couple-month-pager:has(.couple-month-toggle:focus-visible) .couple-month-tabs {
+  outline: 3px solid color-mix(in srgb, var(--secondary) 58%, white);
+  outline-offset: 4px;
+  border-radius: 0.6rem;
 }
 
 .couple-month-tabs,
@@ -454,7 +698,7 @@ code {
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 14px 32px rgba(68, 98, 104, 0.1);
-  touch-action: none;
+  touch-action: pan-x pan-y;
 }
 
 .couple-calendar-top {
@@ -463,7 +707,11 @@ code {
   padding: 1rem;
   border-bottom: 1px solid rgba(121, 166, 171, 0.22);
   background:
-    linear-gradient(135deg, rgba(223, 246, 235, 0.78), rgba(255, 248, 223, 0.7)),
+    linear-gradient(
+      135deg,
+      rgba(223, 246, 235, 0.78),
+      rgba(255, 248, 223, 0.7)
+    ),
     white;
 }
 
@@ -523,7 +771,7 @@ code {
   align-content: start;
   gap: 0.48rem;
   min-height: 7.7rem;
-  padding: 0.62rem 2.25rem 0.72rem 0.62rem;
+  padding: 0.62rem 3rem 0.72rem 0.62rem;
   color: var(--dark);
   text-decoration: none;
 }
@@ -632,19 +880,31 @@ code {
 
 .couple-day.has-note {
   background:
-    linear-gradient(180deg, rgba(255, 232, 239, 0.62), rgba(255, 255, 255, 0.86)),
+    linear-gradient(
+      180deg,
+      rgba(255, 232, 239, 0.62),
+      rgba(255, 255, 255, 0.86)
+    ),
     white;
 }
 
 .couple-day.is-rest-day {
   background:
-    linear-gradient(180deg, rgba(223, 246, 235, 0.78), rgba(255, 255, 255, 0.9)),
+    linear-gradient(
+      180deg,
+      rgba(223, 246, 235, 0.78),
+      rgba(255, 255, 255, 0.9)
+    ),
     white;
 }
 
 .couple-day.has-note:hover {
   background:
-    linear-gradient(180deg, rgba(223, 242, 255, 0.78), rgba(255, 255, 255, 0.9)),
+    linear-gradient(
+      180deg,
+      rgba(223, 242, 255, 0.78),
+      rgba(255, 255, 255, 0.9)
+    ),
     white;
 }
 
@@ -653,8 +913,8 @@ code {
   top: 0.4rem;
   right: 0.4rem;
   display: inline-grid;
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 2.5rem;
+  height: 2.5rem;
   place-items: center;
   padding: 0;
   border: 1px solid rgba(121, 166, 171, 0.34);
@@ -800,6 +1060,17 @@ code {
   justify-content: flex-end;
 }
 
+.calendar-comment-status {
+  min-height: 1.2rem;
+  margin: 0;
+  color: var(--darkgray);
+  font-size: 0.82rem;
+}
+
+.calendar-comment-status.is-error {
+  color: #b23a32;
+}
+
 .calendar-comment-actions button {
   min-height: 2.35rem;
   padding: 0.5rem 0.82rem;
@@ -815,6 +1086,11 @@ code {
 .calendar-comment-actions button:hover {
   border-color: rgba(47, 107, 91, 0.48);
   background: rgba(223, 246, 235, 0.82);
+}
+
+.calendar-comment-actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 .couple-day.today b {
@@ -1228,7 +1504,15 @@ code {
 }
 
 .sticker-upload-button input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .sticker-wall-toolbar button:hover,
@@ -1273,12 +1557,23 @@ code {
   border: 1px solid rgba(121, 166, 171, 0.3);
   border-radius: 0.65rem;
   background:
-    radial-gradient(circle at 12px 12px, rgba(47, 107, 91, 0.13) 1.2px, transparent 1.4px),
-    linear-gradient(135deg, rgba(223, 242, 255, 0.82), rgba(255, 248, 223, 0.62)),
+    radial-gradient(
+      circle at 12px 12px,
+      rgba(47, 107, 91, 0.13) 1.2px,
+      transparent 1.4px
+    ),
+    linear-gradient(
+      135deg,
+      rgba(223, 242, 255, 0.82),
+      rgba(255, 248, 223, 0.62)
+    ),
     white;
-  background-size: 28px 28px, auto, auto;
+  background-size:
+    28px 28px,
+    auto,
+    auto;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.52);
-  touch-action: none;
+  touch-action: pan-x pan-y;
 }
 
 .sticker-wall-layer {
@@ -1427,7 +1722,173 @@ code {
   position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
-  touch-action: none;
+  touch-action: pan-x pan-y;
+}
+
+:root[saved-theme="dark"] {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(49, 83, 97, 0.24), transparent 24rem),
+    radial-gradient(
+      circle at 86% 10%,
+      rgba(79, 46, 58, 0.28),
+      transparent 22rem
+    ),
+    radial-gradient(
+      circle at 78% 78%,
+      rgba(35, 72, 59, 0.24),
+      transparent 20rem
+    ),
+    var(--light);
+}
+
+:root[saved-theme="dark"] body {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    radial-gradient(
+      circle at 18px 18px,
+      rgba(143, 199, 181, 0.09) 1.4px,
+      transparent 1.6px
+    );
+  background-size:
+    auto,
+    34px 34px;
+}
+
+:root[saved-theme="dark"] {
+  .garden-hero,
+  .construction-hero {
+    background:
+      radial-gradient(
+        circle at 86% 18%,
+        rgba(255, 255, 255, 0.05),
+        transparent 0 7rem
+      ),
+      linear-gradient(135deg, var(--garden-blue), var(--garden-cream));
+  }
+
+  .garden-card,
+  .garden-card--building,
+  .construction-card {
+    background: linear-gradient(
+      135deg,
+      var(--garden-paper-strong),
+      var(--garden-blue)
+    );
+  }
+
+  .privacy-note {
+    background: color-mix(in srgb, var(--garden-mint) 72%, var(--light));
+  }
+
+  .garden-kicker,
+  .construction-kicker,
+  .construction-badge {
+    color: var(--tertiary);
+  }
+
+  .couple-month-tabs label,
+  .month-turn,
+  .calendar-sleep-pill,
+  .calendar-comment-trigger,
+  .calendar-comment-text,
+  .calendar-comment-item,
+  .calendar-comment-actions button,
+  .couple-sticker,
+  .sticker-category-section,
+  .sticker-preview,
+  .sticker-wall-toolbar button,
+  .sticker-upload-button,
+  .sticker-stage-item,
+  .sticker-owner-panel,
+  .sticker-owner-key input,
+  .sticker-owner-panel button,
+  .sticker-page-creator input {
+    background: color-mix(in srgb, var(--light) 86%, var(--garden-blue));
+    color: var(--dark);
+  }
+
+  .couple-month-tabs label:hover,
+  .month-turn:hover,
+  .calendar-comment-trigger:hover,
+  .calendar-comment-actions button:hover,
+  .sticker-wall-toolbar button:hover,
+  .sticker-upload-button:hover,
+  .sticker-owner-panel button:hover {
+    background: color-mix(in srgb, var(--light) 70%, var(--garden-mint));
+  }
+
+  .couple-calendar,
+  .calendar-comment-card {
+    background: var(--garden-paper-strong);
+  }
+
+  .couple-calendar-top {
+    background: linear-gradient(
+      135deg,
+      var(--garden-mint),
+      var(--garden-cream)
+    );
+  }
+
+  .couple-weekday,
+  .couple-day.is-empty {
+    background: color-mix(in srgb, var(--light) 92%, var(--garden-blue));
+    color: var(--darkgray);
+  }
+
+  .couple-day.has-note,
+  .couple-day.has-note:hover {
+    background: linear-gradient(
+      180deg,
+      var(--garden-blush),
+      var(--garden-paper)
+    );
+  }
+
+  .couple-day.is-rest-day {
+    background: linear-gradient(
+      180deg,
+      var(--garden-mint),
+      var(--garden-paper)
+    );
+  }
+
+  .calendar-attribute-rest,
+  .calendar-comment-item.is-mine {
+    background: var(--garden-mint);
+    color: var(--dark);
+  }
+
+  .calendar-attribute-note {
+    background: var(--garden-blush);
+    color: var(--dark);
+  }
+
+  .couple-day strong,
+  .calendar-title-preview,
+  .calendar-comment-trigger,
+  .calendar-comment-actions button,
+  .sticker-wall-toolbar button,
+  .sticker-upload-button {
+    color: var(--secondary);
+  }
+
+  .calendar-whisper-preview,
+  .couple-day em {
+    color: var(--darkgray);
+  }
+
+  .sticker-wall-board {
+    background:
+      radial-gradient(
+        circle at 12px 12px,
+        rgba(143, 199, 181, 0.13) 1.2px,
+        transparent 1.4px
+      ),
+      linear-gradient(135deg, var(--garden-blue), var(--garden-cream)),
+      var(--light);
+    box-shadow: inset 0 0 0 1px rgba(143, 199, 181, 0.16);
+  }
 }
 
 footer {
@@ -1437,6 +1898,10 @@ footer {
 @media all and ($tablet) {
   .center > article {
     margin-top: 1rem;
+  }
+
+  .construction-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1495,6 +1960,16 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .construction-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .construction-actions,
+  .not-found-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .couple-calendar-grid {
     font-size: 0.92rem;
   }
@@ -1505,14 +1980,14 @@ footer {
 
   .couple-day {
     min-height: 6.4rem;
-    padding: 0.42rem 1.82rem 0.48rem 0.42rem;
+    padding: 0.42rem 3rem 0.48rem 0.42rem;
   }
 
   .calendar-comment-trigger {
     top: 0.3rem;
     right: 0.3rem;
-    width: 1.32rem;
-    height: 1.32rem;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   .calendar-sleep-pill {
@@ -1560,5 +2035,21 @@ footer {
 
   .sticker-wall-board {
     min-height: 27rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  .garden-card,
+  .construction-link {
+    transition: none;
+  }
+
+  .garden-card:hover,
+  .construction-link:hover {
+    transform: none;
   }
 }

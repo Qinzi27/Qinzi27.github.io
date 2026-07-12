@@ -9,8 +9,6 @@ privacy: "public"
 summary: "Project logs, experiments, tools, and PhD preparation records."
 ---
 
-# Projects
-
 Projects turn notes into visible work.
 
 这里用于记录小工具、分析实验、学习路线和博士准备进展。

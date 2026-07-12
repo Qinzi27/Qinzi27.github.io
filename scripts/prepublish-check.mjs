@@ -145,6 +145,11 @@ function validateProtectedMarkdown(source, frontmatter, relative) {
     typeof frontmatter.password === "string" && frontmatter.password.trim().length > 0
   const hasPasswordEnv =
     typeof frontmatter.passwordEnv === "string" && frontmatter.passwordEnv.trim().length > 0
+  const hasLiteralCalendarToken =
+    typeof frontmatter.calendarAccessToken === "string" && frontmatter.calendarAccessToken.trim().length > 0
+  const hasCalendarTokenEnv =
+    typeof frontmatter.calendarAccessTokenEnv === "string" && frontmatter.calendarAccessTokenEnv.trim().length > 0
+  const requiresCalendarToken = String(frontmatter.type ?? "").toLowerCase() === "couple-calendar"
 
   if (hasLiteralPassword) {
     failures.push({
@@ -159,6 +164,22 @@ function validateProtectedMarkdown(source, frontmatter, relative) {
       file: relative,
       keyword: "missing passwordEnv",
       line: findFrontmatterLine(source, "privacy"),
+    })
+  }
+
+  if (hasLiteralCalendarToken) {
+    failures.push({
+      file: relative,
+      keyword: "literal calendar access token in frontmatter",
+      line: findFrontmatterLine(source, "calendarAccessToken"),
+    })
+  }
+
+  if (requiresCalendarToken && !hasCalendarTokenEnv) {
+    failures.push({
+      file: relative,
+      keyword: "missing calendarAccessTokenEnv",
+      line: findFrontmatterLine(source, "type"),
     })
   }
 

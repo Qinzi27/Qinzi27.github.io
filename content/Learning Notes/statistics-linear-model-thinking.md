@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A concise bilingual note on thinking with linear models instead of only memorizing formulas."
 ---
 
-# Statistics Linear Model Thinking
-
 A linear model is not only a formula. It is a way to write down a hypothesis about signal, noise, and covariates.
 
 线性模型的重点不是背公式，而是把研究问题拆成可解释的结构。

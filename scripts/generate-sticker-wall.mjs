@@ -21,11 +21,7 @@ function normalizePath(filePath) {
 }
 
 function titleFromFile(filePath) {
-  return path
-    .basename(filePath, path.extname(filePath))
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
+  return path.basename(filePath, path.extname(filePath)).replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim()
 }
 
 function titleFromSlug(slug) {
@@ -88,7 +84,10 @@ function dedupeImageFiles(files) {
   const selected = new Map()
 
   for (const filePath of files) {
-    const key = `${packFromFile(filePath)}:${imageFileHash(filePath)}`
+    // The same GIF may exist in several imported packs. Keep one canonical URL
+    // in the manifest while leaving every source file untouched for backwards
+    // compatibility with already-saved remote sticker records.
+    const key = imageFileHash(filePath)
     const current = selected.get(key)
     if (
       !current ||
@@ -160,8 +159,8 @@ function makeCategoryPage(assets) {
   const sections = groups
     .map((group) => {
       const previews = group.items
-        .map(
-          (asset) => [
+        .map((asset) =>
+          [
             '      <figure class="sticker-preview">',
             `        <img src="${escapeHtml(asset.src)}" alt="${escapeHtml(asset.name)}" loading="lazy" decoding="async" />`,
             `        <figcaption>${escapeHtml(asset.name)}</figcaption>`,
@@ -189,16 +188,14 @@ function makeCategoryPage(assets) {
     'title: "Sticker Categories"',
     'date: "2026-06-29"',
     'type: "asset-gallery"',
-    'tags: ["stickers", "gif", "assets"]',
     'status: "seed"',
     "publish: true",
     'privacy: "public"',
+    "unlisted: true",
     'description: "Categorized GIF sticker previews for choosing sticker packs."',
     'socialDescription: "Categorized GIF sticker previews for choosing sticker packs."',
     'summary: "A generated gallery of public GIF sticker packs with preview images."',
     "---",
-    "",
-    "# Sticker Categories",
     "",
     '<p class="sticker-wall-links"><a href="./sticker-wall">打开贴纸墙</a></p>',
     "",

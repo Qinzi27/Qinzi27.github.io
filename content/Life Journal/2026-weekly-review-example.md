@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A public-safe weekly review example focused on learning rhythm and energy."
 ---
 
-# Weekly Review Example
-
 ## Wins
 
 - Built the first version of a Quartz-based academic garden.

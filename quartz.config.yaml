@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=./quartz/plugins/quartz-plugins.schema.json
 configuration:
   pageTitle: Qinzi27 Academic Garden
-  pageTitleSuffix: ""
+  pageTitleSuffix: " · Qinzi27"
   enableSPA: true
   enablePopovers: true
   analytics: null
@@ -195,13 +195,13 @@ plugins:
   - source: github:quartz-community/recent-notes
     enabled: true
     options:
-      title: Recent Notes
-      limit: 6
+      title: 最近更新
+      limit: 4
       linkToMore: false
-      showTags: true
+      showTags: false
     layout:
       position: left
-      priority: 25
+      priority: 40
   - source: github:quartz-community/spacer
     enabled: true
     options: {}
@@ -233,7 +233,9 @@ plugins:
     options:
       envField: passwordEnv
       passwordField: password
-      minLength: 4
+      minLength: 12
+      accessTokenEnvField: calendarAccessTokenEnv
+      accessTokenMinLength: 32
     order: 890
   - source: github:quartz-community/encrypted-pages
     enabled: true

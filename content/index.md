@@ -1,5 +1,5 @@
 ---
-title: "Home"
+title: "Qinzi27 Academic Garden"
 date: "2026-06-27"
 type: "home"
 tags: ["garden", "academic-blog"]
@@ -8,8 +8,6 @@ publish: true
 privacy: "public"
 summary: "A bilingual academic garden for learning notes, research reading, projects, and selected life reflections."
 ---
-
-# Qinzi27 Academic Garden
 
 <div class="garden-hero">
   <div>
@@ -35,32 +33,16 @@ Welcome. This is a long-term Markdown garden for academic learning, research rea
   <a class="garden-card" href="./sticker-wall"><span>07</span><strong>GIF Sticker Wall</strong><em>random visitor stickers</em></a>
   <a class="garden-card" href="./sticker-categories"><span>08</span><strong>Sticker Categories</strong><em>preview sticker packs</em></a>
   <a class="garden-card" href="./our-calendar/"><span>❤</span><strong>我们的小日历</strong><em>输入密码后查看日常记录</em></a>
+  <a class="garden-card garden-card--building" href="./under-construction"><span>🚧</span><strong>施工区</strong><em>正在搭建的栏目与下一步</em></a>
 </div>
 
-## Publishing rule
+## How this garden grows
 
-Public notes use both fields below:
-
-```yaml
-publish: true
-privacy: public
-```
-
-加密笔记使用单独的受保护发布流程。Drafts, raw notes, personal archives, message exports, attachments, and PDF folders are ignored by the Quartz build and checked before publishing.
+每篇公开笔记都从一个问题开始：先记录概念，再连接论文与方法，最后沉淀为可以复用的项目经验。这里展示的是经过整理的阶段性成果，而不是全部工作过程。
 
 <div class="privacy-note">
-  <strong>Privacy-first workflow</strong>
-  <p>素材、私人记录和原始材料先放在未发布区域；只有确认可公开的 Markdown 和图片才进入公开目录。</p>
+  <strong>Curated, not complete</strong>
+  <p>学习材料与个人记录会先在非公开区域整理；只有适合分享、上下文完整的内容才会进入这个花园。</p>
 </div>
 
-## Example map
-
-```mermaid
-flowchart LR
-  A[Capture] --> B[Learning Notes]
-  B --> C[Paper Reading]
-  C --> D[Research Questions]
-  D --> E[Projects]
-  B --> F[Life Journal]
-  F --> G[Weekly Review]
-```
+尚未完成的方向会先放在 [[Under Construction|施工区]]，因此每个入口都会说明当前状态，而不是留下空白页面。

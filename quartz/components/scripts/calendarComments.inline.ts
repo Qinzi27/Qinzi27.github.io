@@ -2,6 +2,9 @@ type CalendarComment = {
   id: string
   date: string
   text: string
+  owned?: boolean
+  // Local-only legacy field. Remote responses now expose `owned` instead of
+  // leaking a visitor identifier.
   visitorId?: string
   status?: string
   createdAt?: string
@@ -13,6 +16,7 @@ type CalendarCommentMap = Record<string, CalendarComment[]>
 type CalendarInteractionsClient = {
   enabled: boolean
   visitorId: () => string
+  calendarAccess: () => boolean
   listComments: (params: Record<string, string>) => Promise<CalendarComment[]>
   saveComment: (payload: Record<string, unknown>) => Promise<CalendarComment | null>
 }
@@ -21,10 +25,16 @@ const calendarCommentStorageKey = "qinzi27-calendar-day-comments-v1"
 
 function readCalendarComments(): CalendarCommentMap {
   try {
-    const parsed = JSON.parse(localStorage.getItem(calendarCommentStorageKey) ?? "{}") as Record<
-      string,
-      string | CalendarComment[]
-    >
+    const current = sessionStorage.getItem(calendarCommentStorageKey)
+    const legacy = localStorage.getItem(calendarCommentStorageKey)
+    if (!current && legacy) {
+      sessionStorage.setItem(calendarCommentStorageKey, legacy)
+    }
+    if (legacy) {
+      localStorage.removeItem(calendarCommentStorageKey)
+    }
+
+    const parsed = JSON.parse(current ?? legacy ?? "{}") as Record<string, string | CalendarComment[]>
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return {}
     }
@@ -52,7 +62,8 @@ function readCalendarComments(): CalendarCommentMap {
 }
 
 function saveCalendarComments(comments: CalendarCommentMap) {
-  localStorage.setItem(calendarCommentStorageKey, JSON.stringify(comments))
+  sessionStorage.setItem(calendarCommentStorageKey, JSON.stringify(comments))
+  localStorage.removeItem(calendarCommentStorageKey)
 }
 
 function getCalendarInteractionsClient() {
@@ -97,7 +108,7 @@ function makeCommentEditor() {
   const textarea = document.createElement("textarea")
   textarea.className = "calendar-comment-text"
   textarea.dataset.calendarCommentText = ""
-  textarea.placeholder = "写给这一天；保存后其他访客也能看到"
+  textarea.placeholder = "写给这一天；输入日历密码并解锁后可共享保存"
   textarea.rows = 7
 
   const list = document.createElement("div")
@@ -106,6 +117,11 @@ function makeCommentEditor() {
 
   const actions = document.createElement("div")
   actions.className = "calendar-comment-actions"
+
+  const status = document.createElement("p")
+  status.className = "calendar-comment-status"
+  status.dataset.calendarCommentStatus = ""
+  status.setAttribute("aria-live", "polite")
 
   const saveButton = document.createElement("button")
   saveButton.type = "button"
@@ -123,7 +139,7 @@ function makeCommentEditor() {
   closeButton.textContent = "关闭"
 
   actions.append(saveButton, deleteButton, closeButton)
-  card.append(title, list, textarea, actions)
+  card.append(title, list, textarea, status, actions)
   editor.append(backdrop, card)
   return editor
 }
@@ -134,7 +150,7 @@ function setEditorDate(editor: HTMLElement, date: string, comments: CalendarComm
   const textarea = editor.querySelector<HTMLTextAreaElement>("[data-calendar-comment-text]")
   const dateComments = comments[date] ?? []
   const visitorId = getCalendarVisitorId()
-  const ownComment = dateComments.find((comment) => comment.visitorId === visitorId)
+  const ownComment = dateComments.find((comment) => comment.owned === true || comment.visitorId === visitorId)
   editor.dataset.calendarCommentDate = date
 
   if (title) {
@@ -152,7 +168,8 @@ function setEditorDate(editor: HTMLElement, date: string, comments: CalendarComm
       dateComments.forEach((comment) => {
         const item = document.createElement("article")
         item.className = "calendar-comment-item"
-        if (comment.visitorId === visitorId) {
+        const isOwn = comment.owned === true || comment.visitorId === visitorId
+        if (isOwn) {
           item.classList.add("is-mine")
         }
 
@@ -160,7 +177,7 @@ function setEditorDate(editor: HTMLElement, date: string, comments: CalendarComm
         text.textContent = comment.text
 
         const meta = document.createElement("span")
-        meta.textContent = comment.visitorId === visitorId ? "我写的" : "访客留言"
+        meta.textContent = isOwn ? "我写的" : "共享留言"
 
         item.append(text, meta)
         list.append(item)
@@ -256,13 +273,29 @@ function initCalendarComments() {
     })
     .catch((error) => console.warn("[CalendarComments] Failed to load shared comments", error))
 
-  const closeEditor = () => {
-    editor.hidden = true
+  let lastTrigger: HTMLElement | null = null
+
+  const setEditorStatus = (message = "", isError = false) => {
+    const status = editor.querySelector<HTMLElement>("[data-calendar-comment-status]")
+    if (!status) {
+      return
+    }
+    status.textContent = message
+    status.classList.toggle("is-error", isError)
   }
 
-  const openEditor = (date: string) => {
+  const closeEditor = () => {
+    editor.hidden = true
+    setEditorStatus()
+    lastTrigger?.focus()
+    lastTrigger = null
+  }
+
+  const openEditor = (date: string, trigger: HTMLElement) => {
     comments = readCalendarComments()
     setEditorDate(editor, date, comments)
+    lastTrigger = trigger
+    setEditorStatus()
     editor.hidden = false
     editor.querySelector<HTMLTextAreaElement>("[data-calendar-comment-text]")?.focus()
   }
@@ -278,7 +311,7 @@ function initCalendarComments() {
     applyCalendarCommentMarkers(root, comments)
   }
 
-  root.addEventListener("click", (event) => {
+  root.addEventListener("click", async (event) => {
     const target = event.target
     if (!(target instanceof Element)) {
       return
@@ -288,9 +321,10 @@ function initCalendarComments() {
     if (openButton && root.contains(openButton)) {
       event.preventDefault()
       event.stopPropagation()
-      const date = openButton.dataset.calendarDate ?? openButton.closest<HTMLElement>("[data-calendar-day]")?.dataset.calendarDate
+      const date =
+        openButton.dataset.calendarDate ?? openButton.closest<HTMLElement>("[data-calendar-day]")?.dataset.calendarDate
       if (date) {
-        openEditor(date)
+        openEditor(date, openButton)
       }
       return
     }
@@ -301,7 +335,8 @@ function initCalendarComments() {
       return
     }
 
-    if (target.closest("[data-calendar-comment-save]")) {
+    const saveButton = target.closest<HTMLButtonElement>("[data-calendar-comment-save]")
+    if (saveButton) {
       event.preventDefault()
       const date = editor.dataset.calendarCommentDate
       const textarea = editor.querySelector<HTMLTextAreaElement>("[data-calendar-comment-text]")
@@ -313,12 +348,18 @@ function initCalendarComments() {
       const client = getCalendarInteractionsClient()
 
       if (client?.enabled) {
-        client
-          .saveComment({ date, text: value })
-          .then(refreshComments)
-          .catch((error: unknown) => {
-            console.warn("[CalendarComments] Failed to save shared comment", error)
-          })
+        saveButton.disabled = true
+        setEditorStatus("保存中…")
+        try {
+          await client.saveComment({ date, text: value })
+          await refreshComments()
+          closeEditor()
+        } catch (error) {
+          setEditorStatus("保存失败。请重新输入日历密码解锁页面，再重试。", true)
+          console.warn("[CalendarComments] Failed to save shared comment", error)
+        } finally {
+          saveButton.disabled = false
+        }
       } else {
         comments = readCalendarComments()
         if (value) {
@@ -335,13 +376,13 @@ function initCalendarComments() {
         }
         saveCalendarComments(comments)
         applyCalendarCommentMarkers(root, comments)
+        closeEditor()
       }
-
-      closeEditor()
       return
     }
 
-    if (target.closest("[data-calendar-comment-delete]")) {
+    const deleteButton = target.closest<HTMLButtonElement>("[data-calendar-comment-delete]")
+    if (deleteButton) {
       event.preventDefault()
       const date = editor.dataset.calendarCommentDate
       if (!date) {
@@ -350,19 +391,25 @@ function initCalendarComments() {
 
       const client = getCalendarInteractionsClient()
       if (client?.enabled) {
-        client
-          .saveComment({ date, text: "" })
-          .then(refreshComments)
-          .catch((error: unknown) => {
-            console.warn("[CalendarComments] Failed to delete shared comment", error)
-          })
+        deleteButton.disabled = true
+        setEditorStatus("删除中…")
+        try {
+          await client.saveComment({ date, text: "" })
+          await refreshComments()
+          closeEditor()
+        } catch (error) {
+          setEditorStatus("删除失败。请重新输入日历密码解锁页面，再重试。", true)
+          console.warn("[CalendarComments] Failed to delete shared comment", error)
+        } finally {
+          deleteButton.disabled = false
+        }
       } else {
         comments = readCalendarComments()
         delete comments[date]
         saveCalendarComments(comments)
         applyCalendarCommentMarkers(root, comments)
+        closeEditor()
       }
-      closeEditor()
     }
   })
 
@@ -372,14 +419,26 @@ function initCalendarComments() {
     }
   })
 
-  window.addEventListener("storage", (event) => {
+  const handleStorage = (event: StorageEvent) => {
     if (event.key === calendarCommentStorageKey) {
       comments = readCalendarComments()
       applyCalendarCommentMarkers(root, comments)
     }
-  })
+  }
+  const handleOwnerAccessChanged = () => {
+    void refreshComments().catch((error) => console.warn("[CalendarComments] Failed to refresh owner comments", error))
+  }
+  window.addEventListener("storage", handleStorage)
+  document.addEventListener("qinzi-owner-access-changed", handleOwnerAccessChanged)
+  document.addEventListener("qinzi-calendar-access-changed", handleOwnerAccessChanged)
+  window.addCleanup(() => window.removeEventListener("storage", handleStorage))
+  window.addCleanup(() => document.removeEventListener("qinzi-owner-access-changed", handleOwnerAccessChanged))
+  window.addCleanup(() => document.removeEventListener("qinzi-calendar-access-changed", handleOwnerAccessChanged))
 }
 
 document.addEventListener("nav", initCalendarComments)
-new MutationObserver(initCalendarComments).observe(document.body, { childList: true, subtree: true })
+new MutationObserver(initCalendarComments).observe(document.body, {
+  childList: true,
+  subtree: true,
+})
 initCalendarComments()

@@ -78,10 +78,7 @@ function walkImages(dir, files = []) {
 }
 
 function humanName(filePath) {
-  return path
-    .basename(filePath, path.extname(filePath))
-    .replace(/[-_]+/g, " ")
-    .trim()
+  return path.basename(filePath, path.extname(filePath)).replace(/[-_]+/g, " ").trim()
 }
 
 function titleFromSlug(slug) {
@@ -110,7 +107,9 @@ function dedupeWallStickerFiles(files) {
   const selected = new Map()
 
   for (const filePath of files) {
-    const key = `${wallStickerPack(filePath)}:${imageFileHash(filePath)}`
+    // Match the public sticker-wall manifest: one canonical URL per image
+    // content hash, without deleting legacy files that remote records may use.
+    const key = imageFileHash(filePath)
     const current = selected.get(key)
     if (
       !current ||
@@ -150,11 +149,9 @@ function makeWallAssetScript(imageFiles) {
     }
   })
 
-  return [
-    '<script type="application/json" data-sticker-assets>',
-    JSON.stringify(assets, null, 2),
-    "</script>",
-  ].join("\n")
+  return ['<script type="application/json" data-sticker-assets>', JSON.stringify(assets, null, 2), "</script>"].join(
+    "\n",
+  )
 }
 
 function makeStickerIndex(imageFiles) {
@@ -288,9 +285,10 @@ function monthKey(date) {
 }
 
 function makeMonthTitle(year, month) {
-  const english = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
-    new Date(year, month - 1, 1),
-  )
+  const english = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, 1))
   return {
     english,
     chinese: `${year}年${month}月`,
@@ -329,13 +327,7 @@ function makeCalendarDay(date, day, entry, outside = false) {
     ? `    <span class="calendar-attribute-chip calendar-attribute-${escapeHtml(attribute.key)}">${escapeHtml(attribute.label)}</span>`
     : ""
   const dayHead = (extra = "") =>
-    [
-      '  <span class="couple-day-head">',
-      `    <b>${day}</b>`,
-      attributeChip,
-      extra,
-      "  </span>",
-    ]
+    ['  <span class="couple-day-head">', `    <b>${day}</b>`, attributeChip, extra, "  </span>"]
       .filter(Boolean)
       .join("\n")
   const commentButton = [
@@ -346,12 +338,7 @@ function makeCalendarDay(date, day, entry, outside = false) {
   ].join("\n")
 
   if (!entry) {
-    return [
-      `<div class="couple-day" ${dataAttributes}>`,
-      dayHead(),
-      commentButton,
-      "</div>",
-    ].join("\n")
+    return [`<div class="couple-day" ${dataAttributes}>`, dayHead(), commentButton, "</div>"].join("\n")
   }
 
   const sleepLabel = sleepTime ? `    <span class="calendar-sleep-pill">${escapeHtml(sleepTime)}</span>` : ""
@@ -507,14 +494,13 @@ function makeMonthBlock(entries, wallStickerFiles) {
     }),
     "  </div>",
     '  <div class="couple-month-slides calendar-sticker-board">',
-    ...months.map(
-      (key) =>
-        [
-          `    <section class="couple-month-slide" data-month="${key}">`,
-          makeMonthNav(key, months).replace(/^/gm, "      "),
-          makeMonthCalendar(key, entriesByDate).replace(/^/gm, "      "),
-          "    </section>",
-        ].join("\n"),
+    ...months.map((key) =>
+      [
+        `    <section class="couple-month-slide" data-month="${key}">`,
+        makeMonthNav(key, months).replace(/^/gm, "      "),
+        makeMonthCalendar(key, entriesByDate).replace(/^/gm, "      "),
+        "    </section>",
+      ].join("\n"),
     ),
     "  </div>",
     "</div>",
@@ -556,9 +542,7 @@ function makeStickerBlock(imageFiles) {
 }
 
 function makeEntryStickers(entry, stickerIndex) {
-  const stickers = entry.stickers
-    .map((name) => stickerIndex.get(name))
-    .filter(Boolean)
+  const stickers = entry.stickers.map((name) => stickerIndex.get(name)).filter(Boolean)
 
   if (stickers.length === 0) {
     return ""
@@ -688,11 +672,7 @@ function replaceMarkedBlock(source, startMarker, endMarker, nextBlock) {
   }
 
   return (
-    source.slice(0, start).trimEnd() +
-    "\n\n" +
-    nextBlock +
-    "\n\n" +
-    source.slice(end + endMarker.length).trimStart()
+    source.slice(0, start).trimEnd() + "\n\n" + nextBlock + "\n\n" + source.slice(end + endMarker.length).trimStart()
   )
 }
 

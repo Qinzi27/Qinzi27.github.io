@@ -9,8 +9,6 @@ privacy: "public"
 summary: "A simple public fitness log format focused on consistency and recovery."
 ---
 
-# Fitness Log Example
-
 This is a public-safe fitness note. Keep exact personal metrics in a private place if needed.
 
 这是公开版训练记录，只保留节奏、感受和复盘，不放敏感细节。

@@ -17,11 +17,24 @@ function hasPasswordSource(frontmatter) {
   )
 }
 
+function applyListingFlags(file, frontmatter) {
+  file.data = file.data ?? {}
+  // Quartz emitters read listing flags from file.data rather than directly
+  // from frontmatter. Propagate them here so search, RSS, sitemap, explorer,
+  // and recent notes consistently respect `unlisted` and `stealth`.
+  file.data.unlisted = isPublished(frontmatter.unlisted)
+  if (isPublished(frontmatter.stealth)) {
+    file.data.stealth = true
+    file.data.unlisted = true
+  }
+}
+
 export default function PrivacyPublishFilter() {
   return {
     name: "PrivacyPublishFilter",
     shouldPublish(_ctx, [_tree, file]) {
       const frontmatter = file.data?.frontmatter ?? {}
+      applyListingFlags(file, frontmatter)
       if (!isPublished(frontmatter.publish)) {
         return false
       }

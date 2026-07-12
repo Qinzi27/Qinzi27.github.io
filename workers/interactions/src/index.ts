@@ -1,24 +1,30 @@
-type D1Result<T = unknown> = {
+export type D1Result<T = unknown> = {
   results?: T[]
   meta?: {
     changes?: number
   }
 }
 
-type D1PreparedStatement = {
+export type D1PreparedStatement = {
   bind(...values: unknown[]): D1PreparedStatement
   first<T = unknown>(): Promise<T | null>
   all<T = unknown>(): Promise<D1Result<T>>
   run(): Promise<D1Result>
 }
 
-type D1Database = {
+export type D1Database = {
   prepare(query: string): D1PreparedStatement
 }
 
-type Env = {
+type CloudflareSubtleCrypto = SubtleCrypto & {
+  timingSafeEqual(left: ArrayBuffer | ArrayBufferView, right: ArrayBuffer | ArrayBufferView): boolean
+}
+
+export type Env = {
   DB: D1Database
   ADMIN_TOKEN?: string
+  VISITOR_SIGNING_SECRET?: string
+  CALENDAR_ACCESS_TOKEN?: string
   ALLOWED_ORIGINS?: string
   PUBLIC_WRITE_STATUS?: string
 }
@@ -75,9 +81,14 @@ const jsonContentType = "application/json; charset=utf-8"
 const maxTextLength = 800
 const maxBoardLength = 96
 const maxAssetLength = 280
-const maxVisitorLength = 80
 const maxStickerPageLabelLength = 80
 const maxStickerPageKeyLength = 64
+const adminVisitorId = "admin"
+const calendarEditorVisitorId = "calendar-editor"
+const visitorTokenVersion = "v1"
+const visitorTokenMaxLength = 160
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const textEncoder = new TextEncoder()
 
 function allowedOrigin(request: Request, env: Env) {
   const origin = request.headers.get("Origin") ?? "*"
@@ -90,14 +101,14 @@ function allowedOrigin(request: Request, env: Env) {
     return "*"
   }
 
-  return allowed.includes(origin) ? origin : allowed[0] ?? "*"
+  return allowed.includes(origin) ? origin : (allowed[0] ?? "*")
 }
 
 function corsHeaders(request: Request, env: Env) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin(request, env),
     "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Visitor-Token,X-Calendar-Token",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   }
@@ -196,14 +207,6 @@ function makeStickerPageKey(label: string) {
   return `${slug || "wall"}-${crypto.randomUUID().slice(0, 8)}`
 }
 
-function cleanVisitorId(value: unknown, { required = true } = {}) {
-  const visitorId = cleanText(value, "visitorId", maxVisitorLength, { required })
-  if (visitorId && !/^[\w:.-]+$/.test(visitorId)) {
-    throw new HttpError(400, "visitorId contains unsupported characters.")
-  }
-  return visitorId
-}
-
 function cleanStickerId(value: unknown) {
   const id = cleanText(value, "id", 96)
   if (id && !/^[\w:.-]+$/.test(id)) {
@@ -221,23 +224,152 @@ function cleanAssetSrc(value: unknown) {
   return src
 }
 
-function isAdmin(request: Request, env: Env) {
-  const token = env.ADMIN_TOKEN
+function visitorSigningSecret(env: Env) {
+  const secret = env.VISITOR_SIGNING_SECRET || env.ADMIN_TOKEN
+  if (!secret) {
+    throw new HttpError(503, "Visitor sessions are not configured.")
+  }
+  return secret
+}
+
+function encodeBase64Url(bytes: Uint8Array) {
+  let binary = ""
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")
+}
+
+function decodeBase64Url(value: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    return null
+  }
+
+  const padding = "=".repeat((4 - (value.length % 4)) % 4)
+  try {
+    const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/") + padding)
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  } catch {
+    return null
+  }
+}
+
+async function visitorHmacKey(env: Env) {
+  return crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(visitorSigningSecret(env)),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  )
+}
+
+async function signVisitorId(visitorId: string, env: Env) {
+  const message = `${visitorTokenVersion}.${visitorId}`
+  const signature = await crypto.subtle.sign("HMAC", await visitorHmacKey(env), textEncoder.encode(message))
+  return `${message}.${encodeBase64Url(new Uint8Array(signature))}`
+}
+
+async function verifyVisitorToken(token: string, env: Env) {
+  if (token.length > visitorTokenMaxLength) {
+    return null
+  }
+
+  const [version, visitorId, encodedSignature, ...extra] = token.split(".")
+  if (version !== visitorTokenVersion || !uuidPattern.test(visitorId ?? "") || !encodedSignature || extra.length > 0) {
+    return null
+  }
+
+  const signature = decodeBase64Url(encodedSignature)
+  if (!signature || signature.byteLength !== 32) {
+    return null
+  }
+
+  const message = `${version}.${visitorId}`
+  const valid = await crypto.subtle.verify("HMAC", await visitorHmacKey(env), signature, textEncoder.encode(message))
+  return valid ? visitorId : null
+}
+
+async function requestVisitorId(request: Request, env: Env, { required = false } = {}) {
+  const token = request.headers.get("X-Visitor-Token")?.trim() ?? ""
   if (!token) {
+    if (required) {
+      throw new HttpError(401, "Visitor token is required.")
+    }
+    return null
+  }
+
+  const visitorId = await verifyVisitorToken(token, env)
+  if (!visitorId) {
+    throw new HttpError(401, "Visitor token is invalid.")
+  }
+  return visitorId
+}
+
+async function timingSafeTextEqual(left: string, right: string) {
+  const [leftDigest, rightDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", textEncoder.encode(left)),
+    crypto.subtle.digest("SHA-256", textEncoder.encode(right)),
+  ])
+  const subtle = crypto.subtle as CloudflareSubtleCrypto
+  if (typeof subtle.timingSafeEqual === "function") {
+    return subtle.timingSafeEqual(leftDigest, rightDigest)
+  }
+
+  // Node's Web Crypto test runtime does not yet expose Cloudflare's extension.
+  // Both inputs are fixed-length SHA-256 digests, so this fallback cannot leak
+  // their original lengths and keeps local regression tests representative.
+  const leftBytes = new Uint8Array(leftDigest)
+  const rightBytes = new Uint8Array(rightDigest)
+  let difference = 0
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index]
+  }
+  return difference === 0
+}
+
+async function isAdmin(request: Request, env: Env) {
+  if (!env.ADMIN_TOKEN) {
     return false
   }
 
-  const header = request.headers.get("Authorization") ?? ""
-  return header.replace(/^Bearer\s+/i, "") === token
+  const match = request.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)
+  return match ? timingSafeTextEqual(match[1], env.ADMIN_TOKEN) : false
 }
 
-function requireAdmin(request: Request, env: Env) {
-  if (!isAdmin(request, env)) {
+async function requireAdmin(request: Request, env: Env) {
+  if (!(await isAdmin(request, env))) {
     throw new HttpError(401, "Admin token is required.")
   }
 }
 
-function mapSticker(row: StickerRow) {
+async function isCalendarEditor(request: Request, env: Env) {
+  const expected = env.CALENDAR_ACCESS_TOKEN
+  const provided = request.headers.get("X-Calendar-Token")?.trim() ?? ""
+  if (!expected || !provided || provided.length > 512) {
+    return false
+  }
+  return timingSafeTextEqual(provided, expected)
+}
+
+async function requireCalendarAccess(request: Request, env: Env) {
+  if (await isAdmin(request, env)) {
+    return
+  }
+  if (!env.CALENDAR_ACCESS_TOKEN) {
+    throw new HttpError(503, "Calendar editing is not configured.")
+  }
+  if (!(await isCalendarEditor(request, env))) {
+    throw new HttpError(401, "Calendar access token is required.")
+  }
+}
+
+function mapSticker(
+  row: StickerRow,
+  viewerVisitorId: string | null,
+  includeVisitorId = false,
+  calendarEditable = false,
+) {
   return {
     id: row.id,
     boardKey: row.board_key,
@@ -252,7 +384,8 @@ function mapSticker(row: StickerRow) {
     y: row.y,
     size: row.size,
     rotation: row.rotation,
-    visitorId: row.visitor_id,
+    owned: calendarEditable || (viewerVisitorId !== null && row.visitor_id === viewerVisitorId),
+    ...(includeVisitorId ? { visitorId: row.visitor_id } : {}),
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -270,12 +403,13 @@ function mapStickerPage(row: StickerPageRow) {
   }
 }
 
-function mapComment(row: CommentRow) {
+function mapComment(row: CommentRow, includeVisitorId = false) {
   return {
     id: row.id,
     date: row.date,
     text: row.text,
-    visitorId: row.visitor_id,
+    owned: true,
+    ...(includeVisitorId ? { visitorId: row.visitor_id } : {}),
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -284,7 +418,18 @@ function mapComment(row: CommentRow) {
 
 async function listStickers(request: Request, env: Env, url: URL) {
   const boardKey = cleanBoardKey(url.searchParams.get("board"))
-  const visitorId = cleanVisitorId(url.searchParams.get("visitorId"), { required: false })
+  const calendarBoard = isOwnerManagedStickerBoard(boardKey)
+  const admin = await isAdmin(request, env)
+  if (calendarBoard) {
+    await requireCalendarAccess(request, env)
+  }
+
+  // Ownership comes only from the signed header; body/query visitorId values are intentionally ignored.
+  const signedVisitorId = calendarBoard ? null : await requestVisitorId(request, env)
+  const viewerVisitorId = calendarBoard
+    ? calendarEditorVisitorId
+    : (signedVisitorId ?? (admin ? adminVisitorId : null))
+  const visibilityVisitorId = viewerVisitorId ?? ""
   const rows = await env.DB.prepare(
     `
       SELECT *
@@ -295,10 +440,12 @@ async function listStickers(request: Request, env: Env, url: URL) {
       LIMIT 500
     `,
   )
-    .bind(boardKey, visitorId, visitorId)
+    .bind(boardKey, visibilityVisitorId, visibilityVisitorId)
     .all<StickerRow>()
 
-  return json(request, env, 200, { stickers: (rows.results ?? []).map(mapSticker) })
+  return json(request, env, 200, {
+    stickers: (rows.results ?? []).map((row) => mapSticker(row, viewerVisitorId, false, calendarBoard)),
+  })
 }
 
 async function listStickerPages(request: Request, env: Env) {
@@ -312,16 +459,21 @@ async function listStickerPages(request: Request, env: Env) {
     `,
   ).all<StickerPageRow>()
 
-  return json(request, env, 200, { pages: (rows.results ?? []).map(mapStickerPage) })
+  return json(request, env, 200, {
+    pages: (rows.results ?? []).map(mapStickerPage),
+  })
 }
 
 async function createStickerPage(request: Request, env: Env) {
-  requireAdmin(request, env)
+  await requireAdmin(request, env)
   const payload = await readJson<Record<string, unknown>>(request)
-  const label = cleanText(payload.label, "label", maxStickerPageLabelLength, { required: true })
+  const label = cleanText(payload.label, "label", maxStickerPageLabelLength, {
+    required: true,
+  })
   const key = cleanStickerPageKey(payload.key) || makeStickerPageKey(label)
-  const orderRow = await env.DB.prepare("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM sticker_pages")
-    .first<{ next_order: number }>()
+  const orderRow = await env.DB.prepare(
+    "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM sticker_pages",
+  ).first<{ next_order: number }>()
 
   await env.DB.prepare(
     `
@@ -336,17 +488,31 @@ async function createStickerPage(request: Request, env: Env) {
   return json(request, env, 201, { page: row ? mapStickerPage(row) : null })
 }
 
+async function createVisitorSession(request: Request, env: Env) {
+  const visitorId = crypto.randomUUID()
+  const token = await signVisitorId(visitorId, env)
+  return json(request, env, 201, { token })
+}
+
 async function createSticker(request: Request, env: Env) {
   const payload = await readJson<Record<string, unknown>>(request)
   const asset = (payload.asset && typeof payload.asset === "object" ? payload.asset : {}) as Record<string, unknown>
   const id = cleanStickerId(payload.id)
   const boardKey = cleanBoardKey(payload.boardKey)
-  const visitorId = cleanVisitorId(payload.visitorId)
-  const status = publicWriteStatus(env)
-
-  if (isOwnerManagedStickerBoard(boardKey) && !isAdmin(request, env)) {
-    throw new HttpError(403, "This calendar board can only be changed by the owner.")
+  const calendarBoard = isOwnerManagedStickerBoard(boardKey)
+  const admin = await isAdmin(request, env)
+  if (calendarBoard) {
+    await requireCalendarAccess(request, env)
   }
+
+  // Admin writes keep the legacy NOT NULL column populated without requiring a visitor session.
+  const signedVisitorId = calendarBoard
+    ? null
+    : await requestVisitorId(request, env, {
+        required: !admin,
+      })
+  const visitorId = calendarBoard ? calendarEditorVisitorId : (signedVisitorId ?? adminVisitorId)
+  const status = publicWriteStatus(env)
 
   await env.DB.prepare(
     `
@@ -377,27 +543,34 @@ async function createSticker(request: Request, env: Env) {
     .run()
 
   const row = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
-  return json(request, env, 201, { sticker: row ? mapSticker(row) : null })
+  return json(request, env, 201, {
+    sticker: row ? mapSticker(row, visitorId, false, calendarBoard) : null,
+  })
 }
 
 async function updateSticker(request: Request, env: Env, id: string) {
-  const payload = await readJson<Record<string, unknown>>(request)
-  const admin = isAdmin(request, env)
-  const visitorId = cleanVisitorId(payload.visitorId, { required: !admin })
   const existing = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
 
   if (!existing) {
     throw new HttpError(404, "Sticker was not found or cannot be edited by this visitor.")
   }
 
-  if (isOwnerManagedStickerBoard(existing.board_key)) {
-    if (!admin) {
-      throw new HttpError(403, "This calendar board can only be changed by the owner.")
-    }
-  } else if (!admin && existing.visitor_id !== visitorId) {
+  const admin = await isAdmin(request, env)
+  const calendarBoard = isOwnerManagedStickerBoard(existing.board_key)
+  if (calendarBoard) {
+    await requireCalendarAccess(request, env)
+  }
+
+  const signedVisitorId = calendarBoard
+    ? null
+    : await requestVisitorId(request, env, {
+        required: !admin,
+      })
+  if (!calendarBoard && !admin && existing.visitor_id !== signedVisitorId) {
     throw new HttpError(404, "Sticker was not found or cannot be edited by this visitor.")
   }
 
+  const payload = await readJson<Record<string, unknown>>(request)
   const result = await env.DB.prepare(
     `
       UPDATE stickers
@@ -419,23 +592,33 @@ async function updateSticker(request: Request, env: Env, id: string) {
   }
 
   const row = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
-  return json(request, env, 200, { sticker: row ? mapSticker(row) : null })
+  const viewerVisitorId = calendarBoard
+    ? calendarEditorVisitorId
+    : (signedVisitorId ?? (admin ? adminVisitorId : null))
+  return json(request, env, 200, {
+    sticker: row ? mapSticker(row, viewerVisitorId, false, calendarBoard) : null,
+  })
 }
 
-async function deleteSticker(request: Request, env: Env, id: string, url: URL) {
-  const admin = isAdmin(request, env)
-  const visitorId = cleanVisitorId(url.searchParams.get("visitorId"), { required: !admin })
+async function deleteSticker(request: Request, env: Env, id: string) {
   const existing = await env.DB.prepare("SELECT * FROM stickers WHERE id = ?").bind(id).first<StickerRow>()
 
   if (!existing) {
     throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
   }
 
-  if (isOwnerManagedStickerBoard(existing.board_key)) {
-    if (!admin) {
-      throw new HttpError(403, "This calendar board can only be changed by the owner.")
-    }
-  } else if (!admin && existing.visitor_id !== visitorId) {
+  const admin = await isAdmin(request, env)
+  const calendarBoard = isOwnerManagedStickerBoard(existing.board_key)
+  if (calendarBoard) {
+    await requireCalendarAccess(request, env)
+  }
+
+  const signedVisitorId = calendarBoard
+    ? null
+    : await requestVisitorId(request, env, {
+        required: !admin,
+      })
+  if (!calendarBoard && !admin && existing.visitor_id !== signedVisitorId) {
     throw new HttpError(404, "Sticker was not found or cannot be deleted by this visitor.")
   }
 
@@ -449,30 +632,38 @@ async function deleteSticker(request: Request, env: Env, id: string, url: URL) {
 }
 
 async function listComments(request: Request, env: Env, url: URL) {
-  const visitorId = cleanVisitorId(url.searchParams.get("visitorId"), { required: false })
+  await requireCalendarAccess(request, env)
   const date = url.searchParams.get("date")
   const month = url.searchParams.get("month")
   const from = url.searchParams.get("from")
   const to = url.searchParams.get("to")
 
-  let where = "status = 'approved' OR (? <> '' AND visitor_id = ? AND status <> 'hidden')"
-  const values: unknown[] = [visitorId, visitorId]
+  const hasRange = from !== null || to !== null
+  const filterCount = Number(date !== null) + Number(month !== null) + Number(hasRange)
+  if (filterCount !== 1 || (hasRange && (!from || !to))) {
+    throw new HttpError(400, "Provide date, month, or a complete from and to range.")
+  }
 
+  let where: string
+  let values: unknown[]
   if (date) {
-    where = `date = ? AND (${where})`
-    values.unshift(cleanDate(date))
+    where = "date = ?"
+    values = [cleanDate(date)]
   } else if (month) {
     const monthText = cleanText(month, "month", 7, { required: true })
     if (!/^\d{4}-\d{2}$/.test(monthText)) {
       throw new HttpError(400, "month must be YYYY-MM.")
     }
-    where = `date LIKE ? AND (${where})`
-    values.unshift(`${monthText}-%`)
-  } else if (from || to) {
+    where = "date LIKE ?"
+    values = [`${monthText}-%`]
+  } else {
     const fromDate = cleanDate(from)
     const toDate = cleanDate(to)
-    where = `date >= ? AND date <= ? AND (${where})`
-    values.unshift(fromDate, toDate)
+    if (fromDate > toDate) {
+      throw new HttpError(400, "from must not be after to.")
+    }
+    where = "date >= ? AND date <= ?"
+    values = [fromDate, toDate]
   }
 
   const rows = await env.DB.prepare(
@@ -487,13 +678,18 @@ async function listComments(request: Request, env: Env, url: URL) {
     .bind(...values)
     .all<CommentRow>()
 
-  return json(request, env, 200, { comments: (rows.results ?? []).map(mapComment) })
+  return json(request, env, 200, {
+    comments: (rows.results ?? []).map((row) => mapComment(row)),
+  })
 }
 
 async function saveComment(request: Request, env: Env) {
+  await requireCalendarAccess(request, env)
   const payload = await readJson<Record<string, unknown>>(request)
   const date = cleanDate(payload.date)
-  const visitorId = cleanVisitorId(payload.visitorId)
+  // Both password holders edit the same shared note, while the credential still
+  // has no access to moderation or sticker-page administration.
+  const visitorId = calendarEditorVisitorId
   const text = cleanText(payload.text, "text", maxTextLength)
 
   if (!text) {
@@ -522,7 +718,7 @@ async function saveComment(request: Request, env: Env) {
 }
 
 async function listAdminItems(request: Request, env: Env, url: URL) {
-  requireAdmin(request, env)
+  await requireAdmin(request, env)
   const status = cleanStatus(url.searchParams.get("status") ?? "pending")
   const [stickers, comments] = await Promise.all([
     env.DB.prepare("SELECT * FROM stickers WHERE status = ? ORDER BY created_at DESC LIMIT 200")
@@ -534,13 +730,13 @@ async function listAdminItems(request: Request, env: Env, url: URL) {
   ])
 
   return json(request, env, 200, {
-    stickers: (stickers.results ?? []).map(mapSticker),
-    comments: (comments.results ?? []).map(mapComment),
+    stickers: (stickers.results ?? []).map((row) => mapSticker(row, null, true)),
+    comments: (comments.results ?? []).map((row) => mapComment(row, true)),
   })
 }
 
 async function setAdminStatus(request: Request, env: Env, kind: "stickers" | "comments", id: string) {
-  requireAdmin(request, env)
+  await requireAdmin(request, env)
   const payload = await readJson<Record<string, unknown>>(request)
   const status = cleanStatus(payload.status)
   const result = await env.DB.prepare(`UPDATE ${kind} SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
@@ -555,7 +751,7 @@ async function setAdminStatus(request: Request, env: Env, kind: "stickers" | "co
 }
 
 async function deleteAdminItem(request: Request, env: Env, kind: "stickers" | "comments", id: string) {
-  requireAdmin(request, env)
+  await requireAdmin(request, env)
   const result = await env.DB.prepare(`DELETE FROM ${kind} WHERE id = ?`).bind(id).run()
   if ((result.meta?.changes ?? 0) === 0) {
     throw new HttpError(404, "Item was not found.")
@@ -568,11 +764,18 @@ async function handleRequest(request: Request, env: Env) {
   const { pathname } = url
 
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(request, env) })
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders(request, env),
+    })
   }
 
   if (request.method === "GET" && pathname === "/health") {
     return json(request, env, 200, { ok: true })
+  }
+
+  if (request.method === "POST" && pathname === "/api/visitor-session") {
+    return createVisitorSession(request, env)
   }
 
   if (pathname === "/api/stickers") {
@@ -600,7 +803,7 @@ async function handleRequest(request: Request, env: Env) {
       return updateSticker(request, env, id)
     }
     if (request.method === "DELETE") {
-      return deleteSticker(request, env, id, url)
+      return deleteSticker(request, env, id)
     }
   }
 
@@ -641,7 +844,9 @@ export default {
         return json(request, env, error.status, { error: error.message })
       }
 
-      return json(request, env, 500, { error: error instanceof Error ? error.message : "Unknown error." })
+      return json(request, env, 500, {
+        error: error instanceof Error ? error.message : "Unknown error.",
+      })
     }
   },
 }

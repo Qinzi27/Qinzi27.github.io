@@ -9,8 +9,6 @@ privacy: "public"
 summary: "Long-term academic learning notes for bioinformatics, statistics, coding, and PhD preparation."
 ---
 
-# Learning Notes
-
 This section stores reusable academic notes. A good note should be clear enough to revisit months later.
 
 这里适合放概念解释、公式、代码片段、工具比较、课程整理和博士准备材料。

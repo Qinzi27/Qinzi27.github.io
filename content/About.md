@@ -9,8 +9,6 @@ privacy: "public"
 summary: "About Qinzi27's bilingual academic blog and long-term notes system."
 ---
 
-# About
-
 This site is a bilingual Chinese-English academic blog and knowledge garden.
 
 这个站点不是单纯的展示页，而是一个长期维护的学习档案：把知识从零散输入变成可复用的结构。

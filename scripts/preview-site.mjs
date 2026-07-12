@@ -1,29 +1,20 @@
-import { spawn } from "node:child_process"
+import { loadLocalSiteEnvironment, prepareSite, startNode, validateSiteEnvironment } from "./site-workflow.mjs"
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm"
+// Local preview settings stay in the ignored .env.local file. Existing shell
+// variables keep precedence, so CI and one-off overrides continue to work.
+loadLocalSiteEnvironment()
+
+// Fail early instead of discovering missing protected-page settings near the
+// end of the first preview build.
+if (!validateSiteEnvironment("Local preview")) {
+  process.exit(1)
+}
+
 const previewPort = process.env.QUARTZ_PREVIEW_PORT ?? "8090"
 const children = new Set()
 
-function optionsFor(command) {
-  return { stdio: "inherit", shell: process.platform === "win32" && command === npmCommand }
-}
-
-function run(command, args) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, optionsFor(command))
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve()
-      } else {
-        reject(new Error(`${command} ${args.join(" ")} exited with ${code}`))
-      }
-    })
-    child.on("error", reject)
-  })
-}
-
-function start(command, args) {
-  const child = spawn(command, args, optionsFor(command))
+function start(args) {
+  const child = startNode(args)
   children.add(child)
   child.on("exit", () => children.delete(child))
   return child
@@ -44,13 +35,10 @@ process.once("SIGTERM", () => {
   process.exit(0)
 })
 
-await run(npmCommand, ["run", "generate-calendar"])
-await run(npmCommand, ["run", "generate-sticker-wall"])
-await run(npmCommand, ["run", "prepublish-check"])
-await run(npmCommand, ["run", "install-plugins"])
+await prepareSite()
 
-start(process.execPath, ["./scripts/generate-sticker-wall.mjs", "--watch"])
-const server = start(process.execPath, ["./quartz/bootstrap-cli.mjs", "build", "--serve", "--port", previewPort])
+start(["./scripts/generate-sticker-wall.mjs", "--watch"])
+const server = start(["./quartz/bootstrap-cli.mjs", "build", "--serve", "--port", previewPort])
 
 server.on("exit", (code) => {
   shutdown()

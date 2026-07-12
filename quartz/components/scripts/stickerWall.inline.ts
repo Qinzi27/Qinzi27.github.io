@@ -14,6 +14,9 @@ type PlacedSticker = StickerAsset & {
   rotation: number
   remote?: boolean
   status?: string
+  owned?: boolean
+  // Kept only to read older localStorage entries; the server no longer trusts
+  // or returns client-provided visitor identifiers.
   visitorId?: string
 }
 
@@ -36,18 +39,21 @@ type StickerBoardState = {
 type StickerInteractionsClient = {
   apiBase: string
   enabled: boolean
-  visitorId: () => string
   ownerKey: () => string
+  calendarAccess: () => boolean
   setOwnerKey: (value: string) => void
   clearOwnerKey: () => void
   listStickers: (boardKey: string) => Promise<PlacedSticker[]>
-  createSticker: (payload: Record<string, unknown>, options?: { owner?: boolean }) => Promise<PlacedSticker | null>
+  createSticker: (
+    payload: Record<string, unknown>,
+    options?: { owner?: boolean; calendar?: boolean },
+  ) => Promise<PlacedSticker | null>
   updateSticker: (
     id: string,
     payload: Record<string, unknown>,
-    options?: { owner?: boolean },
+    options?: { owner?: boolean; calendar?: boolean },
   ) => Promise<PlacedSticker | null>
-  deleteSticker: (id: string, options?: { owner?: boolean }) => Promise<void>
+  deleteSticker: (id: string, options?: { owner?: boolean; calendar?: boolean }) => Promise<void>
   listStickerPages: () => Promise<StickerPage[]>
   createStickerPage: (payload: Record<string, unknown>, options?: { owner?: boolean }) => Promise<StickerPage | null>
 }
@@ -130,10 +136,6 @@ function getStickerInteractionsClient() {
   return (window as Window & { QinziInteractions?: StickerInteractionsClient }).QinziInteractions
 }
 
-function getStickerVisitorId() {
-  return getStickerInteractionsClient()?.visitorId() ?? ""
-}
-
 function canShareAsset(asset: StickerAsset) {
   return asset.src.startsWith("/assets/stickers/") || asset.src.startsWith("/assets/couple-calendar-stickers/")
 }
@@ -147,8 +149,7 @@ function canEditSticker(sticker: PlacedSticker, ownerOnly = false, ownerUnlocked
     return ownerUnlocked
   }
 
-  const visitorId = getStickerVisitorId()
-  return !sticker.visitorId || !visitorId || sticker.visitorId === visitorId
+  return !sticker.remote || sticker.owned === true
 }
 
 function randomBetween(min: number, max: number) {
@@ -175,7 +176,7 @@ function makeSticker(asset: StickerAsset, x?: number, y?: number): PlacedSticker
     y: y ?? randomBetween(8, 72),
     size: randomBetween(66, 112),
     rotation: randomBetween(-12, 12),
-    visitorId: getStickerVisitorId() || undefined,
+    owned: true,
   }
 }
 
@@ -211,7 +212,7 @@ function normalizeRemoteSticker(sticker: PlacedSticker): PlacedSticker {
     y: sticker.y,
     size: sticker.size,
     rotation: sticker.rotation,
-    visitorId: sticker.visitorId,
+    owned: sticker.owned,
     status: sticker.status,
     remote: true,
   }
@@ -236,8 +237,12 @@ function renderSticker(
   item.className = "sticker-wall-item"
   item.classList.toggle("is-readonly", !editable)
   item.dataset.stickerId = sticker.id
-  item.ariaLabel = sticker.name
-  item.title = editable ? sticker.name : ownerOnly ? "开启我的编辑后可调整" : "只能移动或删除自己贴的贴纸"
+  item.ariaLabel = editable ? `${sticker.name}，按 Delete 键删除` : sticker.name
+  item.title = editable
+    ? `${sticker.name}（双击或按 Delete 删除）`
+    : ownerOnly
+      ? "开启我的编辑后可调整"
+      : "只能移动或删除自己贴的贴纸"
   item.style.left = `${sticker.x}%`
   item.style.top = `${sticker.y}%`
   item.style.width = `${sticker.size}px`
@@ -252,6 +257,32 @@ function renderSticker(
   layer.append(item)
 
   let activePointer: number | null = null
+
+  const finishDrag = (event: PointerEvent) => {
+    if (activePointer !== event.pointerId) {
+      return
+    }
+
+    activePointer = null
+    item.classList.remove("is-dragging")
+    savePlacedStickers(storageKey, stickers)
+    onStickerMoved?.(sticker)
+  }
+
+  const removeSticker = () => {
+    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
+      return
+    }
+
+    const index = stickers.findIndex((current) => current.id === sticker.id)
+    if (index >= 0) {
+      stickers.splice(index, 1)
+      savePlacedStickers(storageKey, stickers)
+      item.remove()
+      onStickerDeleted?.(sticker)
+      onStickersChanged?.()
+    }
+  }
 
   item.addEventListener("pointerdown", (event) => {
     if (!canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
@@ -280,24 +311,17 @@ function renderSticker(
     }
 
     event.preventDefault()
-    activePointer = null
-    item.classList.remove("is-dragging")
-    savePlacedStickers(storageKey, stickers)
-    onStickerMoved?.(sticker)
+    finishDrag(event)
   })
 
-  item.addEventListener("dblclick", () => {
-    if (!canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked)) {
-      return
-    }
+  item.addEventListener("pointercancel", finishDrag)
+  item.addEventListener("lostpointercapture", finishDrag)
 
-    const index = stickers.findIndex((current) => current.id === sticker.id)
-    if (index >= 0) {
-      stickers.splice(index, 1)
-      savePlacedStickers(storageKey, stickers)
-      item.remove()
-      onStickerDeleted?.(sticker)
-      onStickersChanged?.()
+  item.addEventListener("dblclick", removeSticker)
+  item.addEventListener("keydown", (event) => {
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault()
+      removeSticker()
     }
   })
 }
@@ -314,7 +338,12 @@ function getStickerLayer(board: HTMLElement) {
   return layer
 }
 
-function getBoardState(rootStorageKey: string, board: HTMLElement, index: number, totalBoards: number): StickerBoardState {
+function getBoardState(
+  rootStorageKey: string,
+  board: HTMLElement,
+  index: number,
+  totalBoards: number,
+): StickerBoardState {
   const key = board.dataset.stickerBoardKey || (totalBoards === 1 ? "default" : `board-${index + 1}`)
   const storageKey = board.dataset.stickerBoardKey ? `${rootStorageKey}:${key}` : rootStorageKey
   const label = board.dataset.stickerBoardLabel || key
@@ -378,7 +407,11 @@ function renderCategoryFilter(
   }
 
   const options = [
-    { category: "all", label: "全部", count: baseAssets.length + uploadedAssets.length },
+    {
+      category: "all",
+      label: "全部",
+      count: baseAssets.length + uploadedAssets.length,
+    },
     ...makeCategoryOptions(baseAssets),
     ...(uploadedAssets.length > 0 ? [{ category: "uploaded", label: "暂存", count: uploadedAssets.length }] : []),
   ]
@@ -576,7 +609,7 @@ function initStickerWall(root: HTMLElement) {
   const localPages = readLocalStickerPages(storageKey)
   const ownerOnly = root.dataset.stickerOwnerOnly === "true"
   const adminEnabled = root.dataset.stickerAdmin === "true"
-  let ownerUnlocked = !ownerOnly
+  let ownerUnlocked = !ownerOnly || Boolean(getStickerInteractionsClient()?.calendarAccess())
   let adminUnlocked = false
   let activeBoardKey = localStorage.getItem(`${storageKey}:active-board`) ?? ""
   let selectedCategory = "all"
@@ -593,6 +626,13 @@ function initStickerWall(root: HTMLElement) {
     state.layer.innerHTML = ""
     state.stickers.forEach((sticker) => renderStateSticker(state, sticker))
   })
+  const handleCalendarAccessChanged = () => {
+    if (ownerOnly) {
+      setOwnerAccess(Boolean(getStickerInteractionsClient()?.calendarAccess()))
+    }
+  }
+  document.addEventListener("qinzi-calendar-access-changed", handleCalendarAccessChanged)
+  window.addCleanup(() => document.removeEventListener("qinzi-calendar-access-changed", handleCalendarAccessChanged))
 
   function hasOwnerAccess() {
     return !ownerOnly || ownerUnlocked
@@ -602,12 +642,14 @@ function initStickerWall(root: HTMLElement) {
     return adminEnabled && adminUnlocked
   }
 
-  function hasPrivilegedAccess() {
-    return (ownerOnly && ownerUnlocked) || hasAdminAccess()
-  }
-
   function ownerRequestOptions() {
-    return hasPrivilegedAccess() ? { owner: true } : undefined
+    if (hasAdminAccess()) {
+      return { owner: true }
+    }
+    if (ownerOnly && ownerUnlocked) {
+      return { calendar: true }
+    }
+    return undefined
   }
 
   async function validateOwnerKey(key: string) {
@@ -653,10 +695,19 @@ function initStickerWall(root: HTMLElement) {
     updatePageTabs()
     updateMonthPreview()
     renderUploadStage(stage, storageKey, uploadedAssets, addSticker, updateCategoryFilter, hasOwnerAccess)
+    if (unlocked) {
+      boardStates.forEach((state) => {
+        void loadRemoteStickers(state)
+      })
+    }
   }
 
   function createOwnerPanel() {
-    if ((!ownerOnly && !adminEnabled) || root.querySelector("[data-sticker-owner-panel]")) {
+    if (
+      (ownerOnly && !adminEnabled) ||
+      (!ownerOnly && !adminEnabled) ||
+      root.querySelector("[data-sticker-owner-panel]")
+    ) {
       return
     }
 
@@ -712,7 +763,13 @@ function initStickerWall(root: HTMLElement) {
         return
       }
 
-      status.textContent = adminEnabled ? (adminUnlocked ? "可全局编辑" : "访客模式") : ownerUnlocked ? "可调整图标" : "只读"
+      status.textContent = adminEnabled
+        ? adminUnlocked
+          ? "可全局编辑"
+          : "访客模式"
+        : ownerUnlocked
+          ? "可调整图标"
+          : "只读"
       pageInput.disabled = !hasAdminAccess()
       pageButton.disabled = !hasAdminAccess()
     }
@@ -1100,6 +1157,15 @@ function initStickerWall(root: HTMLElement) {
     const state = getActiveBoardState()
     const removed = state.stickers.filter((sticker) => canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked))
     const kept = state.stickers.filter((sticker) => !canEditSticker(sticker, ownerOnly, ownerUnlocked, adminUnlocked))
+    if (removed.length === 0) {
+      return
+    }
+
+    const scope = ownerOnly ? "当前月份" : "当前贴纸页"
+    if (!window.confirm(`确定删除${scope}中可编辑的 ${removed.length} 张贴纸吗？`)) {
+      return
+    }
+
     replaceStateStickers(state, kept)
     removed.forEach(deleteRemoteSticker)
   })
@@ -1137,7 +1203,6 @@ function initStickerWall(root: HTMLElement) {
   root.querySelectorAll<HTMLInputElement>(".couple-month-toggle").forEach((control) => {
     control.addEventListener("change", updateMonthPreview)
   })
-
 }
 
 function initStickerWalls() {
@@ -1145,5 +1210,8 @@ function initStickerWalls() {
 }
 
 document.addEventListener("nav", initStickerWalls)
-new MutationObserver(initStickerWalls).observe(document.body, { childList: true, subtree: true })
+new MutationObserver(initStickerWalls).observe(document.body, {
+  childList: true,
+  subtree: true,
+})
 initStickerWalls()
