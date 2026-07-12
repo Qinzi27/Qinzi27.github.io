@@ -14,8 +14,8 @@ This project is a reproducible Quartz v5 workflow for an academic and personal k
 
 - Editable public pages live under `content/` and require both `publish: true` and `privacy: public`.
 - The `Article Title` component renders the page `<h1>` from frontmatter. Start normal page bodies at paragraph or `<h2>` level; do not repeat the title as a Markdown H1.
-- The protected daily-log source is `content/Our Calendar/每日记录编辑本.md`.
-- `content/Our Calendar/index.md` is generated output; do not hand-edit it unless the generator itself is being debugged.
+- The protected daily-log source is `calendar/daily-log.md` in the separate private repository checked out locally at `_local/calendar-content/`.
+- `content/Our Calendar/index.md` is ignored build-time output generated from `scripts/templates/our-calendar-index.md`; never commit it or the private source to this public repository.
 - Save public figures under `content/assets/figures/` and generated analysis tables under an appropriate `outputs/` directory. Do not overwrite raw data.
 - Use clear Chinese explanations and retain necessary English terms, variable names, and function names.
 

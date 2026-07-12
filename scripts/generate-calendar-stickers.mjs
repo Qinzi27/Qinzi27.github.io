@@ -2,11 +2,16 @@ import fs from "node:fs"
 import path from "node:path"
 import crypto from "node:crypto"
 import { slugifyFilePath } from "@quartz-community/utils"
+import { ROOT, resolveCalendarSourcePaths, validateCalendarSourcePaths } from "./calendar-source-paths.mjs"
 
-const STICKER_DIR = path.resolve("content/assets/couple-calendar-stickers")
-const WALL_STICKER_DIR = path.resolve("content/assets/stickers")
-const DAILY_LOG = path.resolve("content/Our Calendar/每日记录编辑本.md")
-const CALENDAR_PAGE = path.resolve("content/Our Calendar/index.md")
+const {
+  dailyLog: DAILY_LOG,
+  template: CALENDAR_TEMPLATE,
+  output: CALENDAR_PAGE,
+} = validateCalendarSourcePaths(resolveCalendarSourcePaths())
+const CONTENT_DIR = path.join(ROOT, "content")
+const STICKER_DIR = path.join(CONTENT_DIR, "assets", "couple-calendar-stickers")
+const WALL_STICKER_DIR = path.join(CONTENT_DIR, "assets", "stickers")
 const WALL_PACK_LABELS = new Map([
   ["koonyangi", "Koonyangi"],
   ["mini-mini-somchi-2", "Mini Mini Somchi 2"],
@@ -45,7 +50,7 @@ function isoDate(year, month, day) {
 function ensureDirs() {
   fs.mkdirSync(STICKER_DIR, { recursive: true })
   fs.mkdirSync(WALL_STICKER_DIR, { recursive: true })
-  fs.mkdirSync(path.dirname(DAILY_LOG), { recursive: true })
+  fs.mkdirSync(path.dirname(CALENDAR_PAGE), { recursive: true })
 }
 
 function stripFrontmatter(source) {
@@ -128,12 +133,12 @@ function wallStickerPackLabel(pack) {
 }
 
 function publicStickerPath(filePath) {
-  const relativeToContent = toPosix(path.relative(path.resolve("content"), filePath))
+  const relativeToContent = toPosix(path.relative(CONTENT_DIR, filePath))
   return `../${slugifyFilePath(relativeToContent)}`
 }
 
 function publicRootAssetPath(filePath) {
-  const relativeToContent = toPosix(path.relative(path.resolve("content"), filePath))
+  const relativeToContent = toPosix(path.relative(CONTENT_DIR, filePath))
   return `/${slugifyFilePath(relativeToContent)}`
 }
 
@@ -693,7 +698,7 @@ function removeCalendarStickerSection(source) {
 }
 
 function updateCalendarPage({ monthBlock, entryBlock }) {
-  let source = fs.readFileSync(CALENDAR_PAGE, "utf8")
+  let source = fs.readFileSync(CALENDAR_TEMPLATE, "utf8")
   source = replaceMarkedBlock(source, MONTH_START_MARKER, MONTH_END_MARKER, monthBlock)
   source = replaceMarkedBlock(source, ENTRY_START_MARKER, ENTRY_END_MARKER, entryBlock)
   source = removeCalendarStickerSection(source)

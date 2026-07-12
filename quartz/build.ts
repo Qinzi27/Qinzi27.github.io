@@ -23,6 +23,13 @@ import { randomIdNonSecure } from "./util/random"
 import { ChangeEvent } from "./plugins/types"
 import { minimatch } from "minimatch"
 
+function configuredGitIgnoredIncludes(): string[] {
+  return (process.env.QUARTZ_INCLUDE_GIT_IGNORED ?? "")
+    .split(/\r?\n/)
+    .map((filePath) => toPosixPath(filePath.trim()))
+    .filter(Boolean)
+}
+
 function reportSlugCollisions(content: ProcessedContent[]): void {
   const collisions = detectSlugCollisions(content)
   if (collisions.length === 0) return
@@ -80,7 +87,13 @@ async function buildQuartz(argv: Argv, mut: Mutex, clientRefresh: () => void) {
   console.log(`Cleaned output directory \`${output}\` in ${perf.timeSince("clean")}`)
 
   perf.addEvent("glob")
-  const allFiles = await glob("**/*.*", argv.directory, cfg.configuration.ignorePatterns)
+  const includeGitIgnoredPaths = configuredGitIgnoredIncludes()
+  const allFiles = await glob(
+    "**/*.*",
+    argv.directory,
+    cfg.configuration.ignorePatterns,
+    includeGitIgnoredPaths,
+  )
   const markdownPaths = allFiles.filter((fp) => fp.endsWith(".md")).sort()
   console.log(
     `Found ${markdownPaths.length} input files from \`${argv.directory}\` in ${perf.timeSince("glob")}`,
@@ -136,6 +149,7 @@ async function startWatching(
   }
 
   const gitIgnoredMatcher = await isGitIgnored()
+  const explicitlyIncluded = new Set(configuredGitIgnoredIncludes())
   const buildData: BuildData = {
     ctx,
     mut,
@@ -143,7 +157,7 @@ async function startWatching(
     ignored: (fp) => {
       const pathStr = toPosixPath(fp.toString())
       if (pathStr.startsWith(".git/")) return true
-      if (gitIgnoredMatcher(pathStr)) return true
+      if (gitIgnoredMatcher(pathStr) && !explicitlyIncluded.has(pathStr)) return true
       for (const pattern of cfg.configuration.ignorePatterns) {
         if (minimatch(pathStr, pattern)) {
           return true

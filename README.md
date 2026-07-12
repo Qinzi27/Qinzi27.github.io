@@ -137,7 +137,7 @@ An existing shell or CI environment variable takes precedence over `.env.local`.
 Edit daily calendar content here:
 
 ```text
-content/Our Calendar/每日记录编辑本.md
+_local/calendar-content/calendar/daily-log.md
 ```
 
 Or use the local pixel-style editor:
@@ -146,14 +146,16 @@ Or use the local pixel-style editor:
 npm.cmd run daily-gui
 ```
 
-Then open the printed local URL in a browser. The GUI appends or merges entries into `content/Our Calendar/每日记录编辑本.md`, saves a private backup under `content/private/backups/daily-log/`, and can refresh `content/Our Calendar/index.md` after each save.
+Then open the printed local URL in a browser. The GUI appends or merges entries into the private `Qinzi27/Qinzi27-calendar-content` repository at `_local/calendar-content/calendar/daily-log.md`, saves ignored backups under `_local/calendar-content/.local/backups/daily-log/`, and generates the ignored `content/Our Calendar/index.md` only for preview/build. Publishing pushes only the private source commit, dispatches this repository's Pages workflow with that exact commit SHA, and waits for the final deployment result.
 
 Use these pages:
 
 - `/`: write a new quick record.
 - `/calendar.html`: inspect previous days, search old short notes, and edit one calendar day at a time.
 
-The same GUI also includes a one-click Git push panel. It shows the current changed files, lets you edit a commit message, then runs the calendar sync, project check, `git add --all`, `git commit`, and `git push`.
+The same GUI includes a safe publish panel. It refuses unrelated private-repo changes or pre-existing outgoing commits, runs the full check/build flow, stages only `calendar/daily-log.md`, pushes the private commit, dispatches the public Pages workflow with that exact SHA, and waits for the deployment result.
+
+GitHub Actions reads the private repository through the read-only deploy key stored as `CALENDAR_CONTENT_READ_KEY`. The workflow uses sparse checkout, strict SSH host checking, and non-persistent credentials; only the encrypted `public/` artifact is uploaded.
 
 Then run:
 
@@ -204,8 +206,8 @@ Before publishing this authentication change, set the same `CALENDAR_ACCESS_TOKE
 
 ## Build
 
-```bash
-npm run build
+```powershell
+npm.cmd run build
 ```
 
 The build writes the generated static site to `public/`.
@@ -213,10 +215,10 @@ Local builds automatically read the same ignored `.env.local` file as the previe
 
 ## Commit And Publish
 
-```bash
-npm run prepublish-check
+```powershell
+npm.cmd run prepublish-check
 git status
-git add .
+git add -- <intended-files>
 git commit -m "Update academic garden"
 git push origin main
 ```

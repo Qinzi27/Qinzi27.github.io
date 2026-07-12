@@ -133,8 +133,8 @@
           <section class="panel push-panel">
             <div class="panel-title">
               <div>
-                <p class="kicker">Git Push</p>
-                <h2>一键推送</h2>
+                <p class="kicker">Private Git + Pages</p>
+                <h2>安全发布</h2>
               </div>
               <button type="button" class="ghost-button" id="git-refresh-button">状态</button>
             </div>
@@ -147,9 +147,12 @@
                 <input id="run-check" type="checkbox" checked />
                 <span>推送前运行检查</span>
               </label>
-              <button type="button" class="save-button push-button" id="push-button">检查并推送</button>
+              <button type="button" class="save-button push-button" id="push-button">检查并发布</button>
             </div>
             <pre class="git-status" id="git-status"></pre>
+            <a class="deployment-link" id="deployment-link" href="#" target="_blank" rel="noreferrer" hidden>
+              查看 GitHub Actions 部署记录
+            </a>
             <p class="save-message" id="push-message"></p>
           </section>
         </aside>

@@ -1,8 +1,14 @@
 import fs from "node:fs"
 import path from "node:path"
 import process from "node:process"
+import { execFileSync } from "node:child_process"
 
 const CONTENT_DIR = path.resolve("content")
+
+const PRIVATE_CALENDAR_GIT_PATHS = [
+  "content/Our Calendar/每日记录编辑本.md",
+  "content/Our Calendar/index.md",
+]
 
 const EXCLUDED_DIRS = new Set([
   "private",
@@ -204,6 +210,23 @@ function walk(dir, files = []) {
 }
 
 const failures = []
+
+const trackedPrivateCalendarPaths = execFileSync(
+  "git",
+  ["ls-files", "-z", "--", ...PRIVATE_CALENDAR_GIT_PATHS],
+  { encoding: "utf8" },
+)
+  .split("\0")
+  .filter(Boolean)
+
+for (const trackedPath of trackedPrivateCalendarPaths) {
+  failures.push({
+    file: trackedPath,
+    keyword: "private calendar Markdown tracked by the public repository",
+    line: 1,
+  })
+}
+
 const files = walk(CONTENT_DIR)
 
 for (const file of files) {

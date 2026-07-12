@@ -550,6 +550,19 @@ textarea:focus {
   white-space: pre-wrap;
 }
 
+.deployment-link {
+  display: inline-flex;
+  margin-top: 10px;
+  color: var(--accent-deep);
+  font-weight: 800;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.deployment-link[hidden] {
+  display: none;
+}
+
 .save-message {
   min-height: 1.4rem;
   margin: 12px 0 0;

@@ -4,16 +4,35 @@ import http from "node:http"
 import path from "node:path"
 import process from "node:process"
 import { fileURLToPath } from "node:url"
+import {
+  DAILY_PUBLISH_PATHS,
+  assertPrivatePublishBaseline,
+  createDailyPublishRunner,
+  createExclusiveRunner,
+  parseNullSeparatedPaths,
+  pollGitHubPagesDeployment,
+  uniqueGitPaths,
+} from "./daily-log-publish.mjs"
+import { resolveCalendarSourcePaths, validateCalendarSourcePaths } from "./calendar-source-paths.mjs"
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const UI_DIR = path.join(ROOT, "tools", "daily-log-gui")
-const DAILY_LOG = path.join(ROOT, "content", "Our Calendar", "每日记录编辑本.md")
+const CALENDAR_PATHS = validateCalendarSourcePaths(resolveCalendarSourcePaths())
+const PRIVATE_REPO = CALENDAR_PATHS.privateRepoDir
+const DAILY_LOG = CALENDAR_PATHS.dailyLog
 const CALENDAR_SCRIPT = path.join(ROOT, "scripts", "generate-calendar-stickers.mjs")
 const PREPUBLISH_CHECK_SCRIPT = path.join(ROOT, "scripts", "prepublish-check.mjs")
+const BUILD_SCRIPT = path.join(ROOT, "scripts", "build-site.mjs")
+const CHECK_SITE_SCRIPT = path.join(ROOT, "scripts", "check-built-site.mjs")
 const TSC_SCRIPT = path.join(ROOT, "node_modules", "typescript", "bin", "tsc")
-const BACKUP_DIR = path.join(ROOT, "content", "private", "backups", "daily-log")
+const BACKUP_DIR = path.join(PRIVATE_REPO, ".local", "backups", "daily-log")
 const DEFAULT_PORT = Number(process.env.PORT || 5177)
 const MAX_BODY_BYTES = 1_000_000
+
+const privateDailyGitPath = path.relative(PRIVATE_REPO, DAILY_LOG).split(path.sep).join("/")
+if (privateDailyGitPath !== DAILY_PUBLISH_PATHS[0]) {
+  throw new Error(`Private daily-log path does not match the publish boundary: ${privateDailyGitPath}`)
+}
 
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -530,11 +549,11 @@ function runCalendarGenerator() {
   })
 }
 
-function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
+function runCommand(command, args, { timeoutMs = 120_000, cwd = ROOT, preserveStdout = false } = {}) {
   return new Promise((resolve, reject) => {
     const commandText = [command, ...args].join(" ")
     const child = spawn(command, args, {
-      cwd: ROOT,
+      cwd,
       windowsHide: true,
     })
     let stdout = ""
@@ -543,7 +562,7 @@ function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
       child.kill()
       const error = new Error(`${commandText} 超时。`)
       error.command = commandText
-      error.stdout = stdout.trim()
+      error.stdout = preserveStdout ? stdout : stdout.trim()
       error.stderr = stderr.trim()
       reject(error)
     }, timeoutMs)
@@ -557,13 +576,13 @@ function runCommand(command, args, { timeoutMs = 120_000 } = {}) {
     child.on("error", (error) => {
       clearTimeout(timer)
       error.command = commandText
-      error.stdout = stdout.trim()
+      error.stdout = preserveStdout ? stdout : stdout.trim()
       error.stderr = stderr.trim()
       reject(error)
     })
     child.on("close", (code) => {
       clearTimeout(timer)
-      const output = { command: commandText, stdout: stdout.trim(), stderr: stderr.trim() }
+      const output = { command: commandText, stdout: preserveStdout ? stdout : stdout.trim(), stderr: stderr.trim() }
       if (code === 0) {
         resolve(output)
       } else {
@@ -590,10 +609,13 @@ async function runOptionalCommand(command, args, options) {
 async function runProjectCheck() {
   const privacy = await runCommand(process.execPath, [PREPUBLISH_CHECK_SCRIPT], { timeoutMs: 120_000 })
   const typescript = await runCommand(process.execPath, [TSC_SCRIPT, "--noEmit"], { timeoutMs: 180_000 })
+  const build = await runCommand(process.execPath, [BUILD_SCRIPT], { timeoutMs: 300_000 })
+  const site = await runCommand(process.execPath, [CHECK_SITE_SCRIPT], { timeoutMs: 180_000 })
   return {
-    command: "node scripts/prepublish-check.mjs && node node_modules/typescript/bin/tsc --noEmit",
-    stdout: [privacy.stdout, typescript.stdout].filter(Boolean).join("\n"),
-    stderr: [privacy.stderr, typescript.stderr].filter(Boolean).join("\n"),
+    command:
+      "node scripts/prepublish-check.mjs && tsc --noEmit && node scripts/build-site.mjs && node scripts/check-built-site.mjs",
+    stdout: [privacy.stdout, typescript.stdout, build.stdout, site.stdout].filter(Boolean).join("\n"),
+    stderr: [privacy.stderr, typescript.stderr, build.stderr, site.stderr].filter(Boolean).join("\n"),
   }
 }
 
@@ -610,11 +632,14 @@ function parsePorcelainStatus(source) {
 }
 
 async function getGitSummary() {
-  const [status, branch, remote, upstream] = await Promise.all([
-    runCommand("git", ["status", "--porcelain=v1", "-uall", "--branch"]),
-    runOptionalCommand("git", ["branch", "--show-current"]),
-    runOptionalCommand("git", ["remote", "get-url", "origin"]),
-    runOptionalCommand("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]),
+  const [status, branch, remote, upstream, ahead] = await Promise.all([
+    runCommand("git", ["status", "--porcelain=v1", "-uall", "--branch"], { cwd: PRIVATE_REPO }),
+    runOptionalCommand("git", ["branch", "--show-current"], { cwd: PRIVATE_REPO }),
+    runOptionalCommand("git", ["remote", "get-url", "origin"], { cwd: PRIVATE_REPO }),
+    runOptionalCommand("git", ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], {
+      cwd: PRIVATE_REPO,
+    }),
+    runOptionalCommand("git", ["rev-list", "--count", "@{u}..HEAD"], { cwd: PRIVATE_REPO }),
   ])
   const branchLine = status.stdout
     .split(/\r?\n/)
@@ -628,84 +653,109 @@ async function getGitSummary() {
     aheadBehind,
     remote: remote.failed ? "" : remote.stdout,
     upstream: upstream.failed ? "" : upstream.stdout,
+    aheadCount: ahead.failed ? null : Number(ahead.stdout),
     changes: parsePorcelainStatus(status.stdout),
   }
 }
 
-async function pushCurrentBranch(branch, upstream) {
-  if (upstream) {
-    return runCommand("git", ["push"], { timeoutMs: 300_000 })
-  }
-
-  if (!branch || branch === "(detached)") {
-    return runCommand("git", ["push"], { timeoutMs: 300_000 })
-  }
-
-  return runCommand("git", ["push", "-u", "origin", branch], { timeoutMs: 300_000 })
+async function pushExactCommit(sha) {
+  // Push the already-audited object, not the mutable HEAD ref. If another GUI
+  // or an external Git process creates a commit during this final window, that
+  // extra commit cannot be included in this publication.
+  return runCommand("git", ["push", "origin", `${sha}:refs/heads/main`], {
+    timeoutMs: 300_000,
+    cwd: PRIVATE_REPO,
+  })
 }
 
-async function runPushStep(steps, name, action) {
-  try {
-    const output = await action()
-    steps.push({ name, ok: true, ...output })
-    return output
-  } catch (error) {
-    steps.push({
-      name,
-      ok: false,
-      command: error.command || "",
-      stdout: error.stdout || "",
-      stderr: error.stderr || error.message || String(error),
-    })
-    throw error
-  }
+async function listChangedPaths() {
+  // Audit staged, unstaged, and untracked files separately. --no-renames makes
+  // both sides of a rename visible so an unrelated source path cannot hide.
+  const [unstaged, staged, untracked] = await Promise.all([
+    runCommand("git", ["diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", "--"], {
+      cwd: PRIVATE_REPO,
+      preserveStdout: true,
+    }),
+    runCommand("git", ["diff", "--cached", "--no-ext-diff", "--no-renames", "--name-only", "-z", "--"], {
+      cwd: PRIVATE_REPO,
+      preserveStdout: true,
+    }),
+    runCommand("git", ["ls-files", "--others", "--exclude-standard", "-z", "--"], {
+      cwd: PRIVATE_REPO,
+      preserveStdout: true,
+    }),
+  ])
+
+  return uniqueGitPaths(
+    [unstaged.stdout, staged.stdout, untracked.stdout].flatMap((source) => parseNullSeparatedPaths(source)),
+  )
 }
 
-async function runOneClickPush(payload) {
-  const message = normalizeCommitMessage(payload.message)
-  const runCheck = payload.runCheck !== false
-  const steps = []
-
-  try {
-    await runPushStep(steps, "同步日历", () => runCalendarGenerator())
-
-    if (runCheck) {
-      await runPushStep(steps, "项目检查", () => runProjectCheck())
-    }
-
-    let summary = await getGitSummary()
-    if (summary.changes.length > 0) {
-      await runPushStep(steps, "暂存改动", () => runCommand("git", ["add", "--all"]))
-
-      const staged = await runCommand("git", ["diff", "--cached", "--name-only"])
-      if (staged.stdout.trim().length === 0) {
-        steps.push({ name: "创建提交", ok: true, command: "git commit", stdout: "没有可提交的改动，跳过提交。", stderr: "" })
-      } else {
-        await runPushStep(steps, "创建提交", () => runCommand("git", ["commit", "-m", message]))
-      }
-    } else {
-      steps.push({ name: "创建提交", ok: true, command: "git commit", stdout: "工作区没有改动，跳过提交。", stderr: "" })
-    }
-
-    summary = await getGitSummary()
-    await runPushStep(steps, "推送远端", () => pushCurrentBranch(summary.branch, summary.upstream))
-
-    return {
-      ok: true,
-      message,
-      steps,
-      summary: await getGitSummary(),
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      error: error.message || String(error),
-      message,
-      steps,
-      summary: await getGitSummary(),
-    }
-  }
+async function stageDailyPublishPaths(paths) {
+  return runCommand("git", ["add", "--", ...paths], { cwd: PRIVATE_REPO })
 }
+
+async function listStagedPaths() {
+  const output = await runCommand(
+    "git",
+    ["diff", "--cached", "--no-ext-diff", "--no-renames", "--name-only", "-z", "--"],
+    { cwd: PRIVATE_REPO, preserveStdout: true },
+  )
+  return uniqueGitPaths(parseNullSeparatedPaths(output.stdout))
+}
+
+async function getHeadSha() {
+  const output = await runCommand("git", ["rev-parse", "HEAD"], { cwd: PRIVATE_REPO })
+  return output.stdout.trim()
+}
+
+async function getUpstreamSha() {
+  const output = await runCommand("git", ["rev-parse", "@{u}"], { cwd: PRIVATE_REPO })
+  return output.stdout.trim()
+}
+
+async function countCommitsBetween(baseSha, headSha) {
+  const output = await runCommand("git", ["rev-list", "--count", `${baseSha}..${headSha}`], {
+    cwd: PRIVATE_REPO,
+  })
+  return Number(output.stdout)
+}
+
+async function listCommittedPaths(baseSha, headSha) {
+  const output = await runCommand(
+    "git",
+    ["diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", baseSha, headSha, "--"],
+    { cwd: PRIVATE_REPO, preserveStdout: true },
+  )
+  return uniqueGitPaths(parseNullSeparatedPaths(output.stdout))
+}
+
+async function runGh(args) {
+  return runCommand("gh", args, { timeoutMs: 120_000, cwd: ROOT })
+}
+
+const runDailyPublish = createDailyPublishRunner({
+  syncCalendar: runCalendarGenerator,
+  runProjectCheck,
+  listChangedPaths,
+  stagePaths: stageDailyPublishPaths,
+  listStagedPaths,
+  commit: (message) => runCommand("git", ["commit", "-m", message], { cwd: PRIVATE_REPO }),
+  getGitSummary,
+  validateBaseline: (summary, expectedAheadCount = 0) =>
+    assertPrivatePublishBaseline(summary, undefined, expectedAheadCount),
+  push: ({ sha }) => pushExactCommit(sha),
+  getHeadSha,
+  getUpstreamSha,
+  countCommitsBetween,
+  listCommittedPaths,
+  pollDeployment: ({ sha }) => pollGitHubPagesDeployment({ sha, runGh }),
+})
+
+// Saving and publishing share one lock. This prevents a second browser tab
+// from changing the private source after it was staged but before its exact
+// commit has finished deploying.
+const writeCoordinator = createExclusiveRunner((operation) => operation())
 
 async function serveStatic(request, response) {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`)
@@ -782,18 +832,25 @@ async function handleApi(request, response) {
 
   if (request.method === "POST" && requestUrl.pathname === "/api/entries") {
     const payload = validatePayload(await readJson(request))
-    const source = await fs.readFile(DAILY_LOG, "utf8")
-    const backupPath = await backupSource(source)
-    const result = updateDailyLog(source, payload)
-    await fs.writeFile(DAILY_LOG, result.source, "utf8")
-    const generated = payload.generate ? await runCalendarGenerator() : null
-    json(response, 200, {
-      action: result.action,
-      markdown: result.markdown,
-      relativePath: toPosix(DAILY_LOG),
-      backupPath: toPosix(backupPath),
-      generated,
+    const execution = await writeCoordinator.run(async () => {
+      const source = await fs.readFile(DAILY_LOG, "utf8")
+      const backupPath = await backupSource(source)
+      const result = updateDailyLog(source, payload)
+      await fs.writeFile(DAILY_LOG, result.source, "utf8")
+      const generated = payload.generate ? await runCalendarGenerator() : null
+      return {
+        action: result.action,
+        markdown: result.markdown,
+        relativePath: toPosix(DAILY_LOG),
+        backupPath: toPosix(backupPath),
+        generated,
+      }
     })
+    if (!execution.accepted) {
+      json(response, 409, { ok: false, code: execution.error.code, error: execution.error.message })
+      return
+    }
+    json(response, 200, execution.value)
     return
   }
 
@@ -805,23 +862,45 @@ async function handleApi(request, response) {
     }
 
     const markdown = normalizeEntryMarkdown(date, payload.markdown)
-    const source = await fs.readFile(DAILY_LOG, "utf8")
-    const backupPath = await backupSource(source)
-    await fs.writeFile(DAILY_LOG, replaceDailyLogEntry(source, date, markdown), "utf8")
-    const generated = payload.generate !== false ? await runCalendarGenerator() : null
-    json(response, 200, {
-      action: entryRange(source, date) ? "updated" : "created",
-      entry: parseEntryDetails(date, markdown),
-      relativePath: toPosix(DAILY_LOG),
-      backupPath: toPosix(backupPath),
-      generated,
+    const execution = await writeCoordinator.run(async () => {
+      const source = await fs.readFile(DAILY_LOG, "utf8")
+      const backupPath = await backupSource(source)
+      await fs.writeFile(DAILY_LOG, replaceDailyLogEntry(source, date, markdown), "utf8")
+      const generated = payload.generate !== false ? await runCalendarGenerator() : null
+      return {
+        action: entryRange(source, date) ? "updated" : "created",
+        entry: parseEntryDetails(date, markdown),
+        relativePath: toPosix(DAILY_LOG),
+        backupPath: toPosix(backupPath),
+        generated,
+      }
     })
+    if (!execution.accepted) {
+      json(response, 409, { ok: false, code: execution.error.code, error: execution.error.message })
+      return
+    }
+    json(response, 200, execution.value)
     return
   }
 
   if (request.method === "POST" && requestUrl.pathname === "/api/push") {
     const payload = await readJson(request)
-    json(response, 200, await runOneClickPush(payload))
+    const execution = await writeCoordinator.run(() =>
+      runDailyPublish({
+        message: normalizeCommitMessage(payload.message),
+        runCheck: payload.runCheck !== false,
+      }),
+    )
+    if (!execution.accepted) {
+      json(response, 409, {
+        ok: false,
+        code: execution.error.code,
+        error: execution.error.message,
+      })
+      return
+    }
+
+    json(response, 200, execution.value)
     return
   }
 

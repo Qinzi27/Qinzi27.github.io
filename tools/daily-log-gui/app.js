@@ -30,6 +30,7 @@ const runCheck = document.querySelector("#run-check")
 const gitStatus = document.querySelector("#git-status")
 const pushMessage = document.querySelector("#push-message")
 const pushButton = document.querySelector("#push-button")
+const deploymentLink = document.querySelector("#deployment-link")
 
 function formPayload() {
   return {
@@ -56,7 +57,10 @@ async function requestJson(url, options = {}) {
   })
   const payload = await response.json()
   if (!response.ok) {
-    throw new Error(payload.error || "请求失败")
+    const error = new Error(payload.error || "请求失败")
+    error.code = payload.code || "REQUEST_FAILED"
+    error.payload = payload
+    throw error
   }
   return payload
 }
@@ -74,6 +78,11 @@ function setConnection(text, kind = "") {
 function setPushMessage(text, kind = "") {
   pushMessage.textContent = text
   pushMessage.className = `save-message${kind ? ` is-${kind}` : ""}`
+}
+
+function setDeploymentLink(url = "") {
+  deploymentLink.hidden = !url
+  deploymentLink.href = url || "#"
 }
 
 function setMode(nextMode) {
@@ -128,7 +137,7 @@ function renderRecentEntries(entries) {
   })
 }
 
-function formatGitStatus(payload) {
+function formatGitStatus(payload = {}) {
   const lines = [
     `branch: ${payload.branchLine || payload.branch || "(unknown)"}`,
     payload.aheadBehind ? `sync: ${payload.aheadBehind}` : "sync: clean with upstream or unknown",
@@ -154,7 +163,23 @@ function renderGitStatus(payload) {
 }
 
 function renderPushResult(payload) {
-  const lines = [`result: ${payload.ok ? "success" : "failed"}`, `commit message: ${payload.message}`, ""]
+  const deployment = payload.deployment || { status: "not_started" }
+  const deploymentLabels = {
+    success: "success",
+    failure: `failed (${deployment.conclusion || "unknown"})`,
+    timed_out: "waiting timed out",
+    unavailable: "status unavailable",
+    dispatch_failed: "workflow dispatch failed",
+    not_started: "not started",
+  }
+  const lines = [
+    `overall result: ${payload.ok ? "success" : "failed"}`,
+    `private git push: ${payload.gitPushed ? "success" : "not completed"}`,
+    payload.git?.sha ? `commit SHA: ${payload.git.sha}` : "commit SHA: unavailable",
+    `pages deploy: ${deploymentLabels[deployment.status] || deployment.status}`,
+    `commit message: ${payload.message}`,
+    "",
+  ]
 
   payload.steps.forEach((step) => {
     lines.push(`[${step.ok === false ? "failed" : "ok"}] ${step.name} ${step.command || ""}`.trim())
@@ -173,16 +198,27 @@ function renderPushResult(payload) {
     lines.push("")
   }
 
-  lines.push("final status:")
-  lines.push(formatGitStatus(payload.summary))
+  if (deployment.message) {
+    lines.push("deployment:")
+    lines.push(deployment.message)
+    if (deployment.runUrl) {
+      lines.push(deployment.runUrl)
+    }
+    lines.push("")
+  }
+
+  if (payload.summary) {
+    lines.push("final status:")
+    lines.push(formatGitStatus(payload.summary))
+  }
   gitStatus.textContent = lines.join("\n").trim()
+  setDeploymentLink(deployment.runUrl)
 }
 
 async function loadGitStatus() {
   try {
     const payload = await requestJson("/api/git-status")
     renderGitStatus(payload)
-    setPushMessage("")
   } catch (error) {
     setPushMessage(error.message, "error")
   }
@@ -269,7 +305,8 @@ document.querySelector("#copy-button").addEventListener("click", async () => {
 
 pushButton.addEventListener("click", async () => {
   pushButton.disabled = true
-  setPushMessage("正在同步日历、检查、提交并推送...")
+  setDeploymentLink("")
+  setPushMessage("正在检查并推送私有日志；随后会触发网站构建并等待 Pages 最终结果...")
   try {
     const payload = await requestJson("/api/push", {
       method: "POST",
@@ -280,11 +317,21 @@ pushButton.addEventListener("click", async () => {
     })
     renderPushResult(payload)
     if (payload.ok) {
-      setPushMessage("推送完成。", "ok")
+      setPushMessage("私有日志已推送，GitHub Pages 构建与部署成功。", "ok")
+    } else if (payload.gitPushed) {
+      const status = payload.deployment?.status
+      const message =
+        status === "failure"
+          ? "私有日志已推送，但 GitHub Pages 部署失败；请打开工作流链接查看日志。"
+          : "私有日志已推送，但尚未确认 Pages 部署成功；请查看上方状态。"
+      setPushMessage(message, "error")
     } else {
-      setPushMessage("自动提交或推送失败；上方保留了已完成步骤和当前 Git 状态。", "error")
+      setPushMessage("私有日志未推送；上方保留了阻止原因、已完成步骤和当前状态。", "error")
     }
   } catch (error) {
+    if (error.payload?.steps) {
+      renderPushResult(error.payload)
+    }
     setPushMessage(error.message, "error")
     await loadGitStatus()
   } finally {

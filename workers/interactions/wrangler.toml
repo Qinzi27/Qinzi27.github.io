@@ -3,6 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2026-06-29"
 workers_dev = true
 
+# Block production deploys when the admin or protected-calendar credentials
+# are missing. VISITOR_SIGNING_SECRET stays optional during the documented
+# compatibility rollout because the Worker can fall back to ADMIN_TOKEN.
+[secrets]
+required = ["ADMIN_TOKEN", "CALENDAR_ACCESS_TOKEN"]
+
 [vars]
 PUBLIC_WRITE_STATUS = "approved"
 ALLOWED_ORIGINS = "https://qinzi27.github.io,http://localhost:8090,http://127.0.0.1:8090,http://localhost:8092,http://127.0.0.1:8092,http://localhost:8093,http://127.0.0.1:8093"
