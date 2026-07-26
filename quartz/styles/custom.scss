@@ -2038,6 +2038,401 @@ footer {
   }
 }
 
+/* Shared couple planner: the page reuses the garden palette while keeping
+   form controls large enough for two-person editing on phones. */
+.couple-planner-intro {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0 0 1.2rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(226, 242, 236, 0.62),
+    rgba(255, 246, 224, 0.72)
+  );
+}
+
+.couple-planner-intro p {
+  margin: 0;
+}
+
+.couple-planner-hint {
+  color: var(--darkgray);
+  font-size: 0.86rem;
+}
+
+.couple-planner {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.couple-plan-editor,
+.couple-plan-list-section {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 1.2rem;
+  background: var(--light);
+  box-shadow: 0 14px 32px rgba(68, 98, 104, 0.08);
+}
+
+.couple-plan-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.couple-plan-section-heading p,
+.couple-plan-section-heading h2,
+.couple-plan-section-heading h3 {
+  margin: 0;
+}
+
+.couple-plan-section-heading p {
+  color: #7c6750;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.couple-plan-section-heading h2 {
+  margin-top: 0.15rem;
+  border-top: 0;
+}
+
+.couple-plan-section-heading h3 {
+  margin-top: 0.15rem;
+  font-size: 1.08rem;
+}
+
+.couple-plan-form-grid,
+.couple-plan-asset-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.couple-plan-editor label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--darkgray);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.couple-plan-editor input,
+.couple-plan-editor select,
+.couple-plan-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--gray) 65%, transparent);
+  border-radius: 0.72rem;
+  background: color-mix(in srgb, var(--light) 88%, white);
+  color: var(--dark);
+  font: inherit;
+}
+
+.couple-plan-editor textarea {
+  resize: vertical;
+}
+
+.couple-plan-editor input:focus,
+.couple-plan-editor select:focus,
+.couple-plan-editor textarea:focus {
+  border-color: var(--secondary);
+  outline: 3px solid color-mix(in srgb, var(--secondary) 18%, transparent);
+}
+
+.couple-plan-notes-field {
+  margin-top: 0.9rem;
+}
+
+.couple-plan-asset-picker {
+  margin-top: 1.1rem;
+  padding: 1rem;
+  border: 1px dashed rgba(121, 166, 171, 0.5);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--light) 90%, var(--highlight));
+}
+
+.couple-plan-selected-asset {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.2rem;
+  margin: 0.9rem 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.8rem;
+  background: rgba(121, 166, 171, 0.09);
+  color: var(--darkgray);
+  font-size: 0.82rem;
+}
+
+.couple-plan-selected-asset img {
+  width: 3.6rem;
+  height: 3.6rem;
+  object-fit: contain;
+}
+
+.couple-plan-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.3rem, 1fr));
+  gap: 0.55rem;
+  max-height: 22rem;
+  padding: 0.35rem;
+  overflow: auto;
+}
+
+.couple-plan-asset {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--light) 86%, white);
+  cursor: pointer;
+}
+
+.couple-plan-asset:hover,
+.couple-plan-asset.is-selected {
+  border-color: var(--secondary);
+  background: color-mix(in srgb, var(--highlight) 70%, var(--light));
+}
+
+.couple-plan-asset.is-selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--secondary) 24%, transparent);
+}
+
+.couple-plan-asset img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.couple-plan-load-more {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.couple-plan-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.couple-plan-form-actions p {
+  margin: 0;
+  color: var(--darkgray);
+  font-size: 0.84rem;
+}
+
+.couple-plan-form-actions p.is-error,
+.couple-plan-empty.is-error {
+  color: #a13d3d;
+}
+
+.couple-plan-editor button,
+.couple-plan-filters button,
+.couple-plan-card-actions button {
+  min-height: 2.35rem;
+  padding: 0.48rem 0.82rem;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--light);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.couple-plan-editor button:disabled,
+.couple-plan-card-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.couple-plan-editor .couple-plan-secondary,
+.couple-plan-card-actions button {
+  background: transparent;
+  color: var(--secondary);
+}
+
+.couple-plan-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.couple-plan-filters button {
+  min-height: 2rem;
+  padding: 0.35rem 0.68rem;
+  border-color: color-mix(in srgb, var(--secondary) 42%, transparent);
+  background: transparent;
+  color: var(--secondary);
+}
+
+.couple-plan-filters button.is-active {
+  background: var(--secondary);
+  color: var(--light);
+}
+
+.couple-plan-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.couple-plan-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 0.8rem;
+  background: rgba(121, 166, 171, 0.08);
+  color: var(--darkgray);
+  text-align: center;
+}
+
+.couple-plan-card {
+  display: grid;
+  grid-template-columns: minmax(6rem, 9rem) 1fr;
+  overflow: hidden;
+  border: 1px solid rgba(121, 166, 171, 0.28);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--light) 92%, white);
+}
+
+.couple-plan-card:not(:has(.couple-plan-card-image)) {
+  grid-template-columns: 1fr;
+}
+
+.couple-plan-card.is-done {
+  opacity: 0.72;
+}
+
+.couple-plan-card-image {
+  display: grid;
+  place-items: center;
+  min-height: 9rem;
+  padding: 0.7rem;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(
+    145deg,
+    rgba(226, 242, 236, 0.8),
+    rgba(255, 246, 224, 0.72)
+  );
+  cursor: zoom-in;
+}
+
+.couple-plan-card-image img {
+  width: 100%;
+  height: 100%;
+  max-height: 9rem;
+  object-fit: contain;
+}
+
+.couple-plan-card-body {
+  display: grid;
+  align-content: start;
+  gap: 0.58rem;
+  padding: 1rem;
+}
+
+.couple-plan-card-body h3,
+.couple-plan-card-body p {
+  margin: 0;
+}
+
+.couple-plan-card-body h3 {
+  border-top: 0;
+}
+
+.couple-plan-card.is-done h3 {
+  text-decoration: line-through;
+}
+
+.couple-plan-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.42rem;
+  color: var(--darkgray);
+  font-size: 0.78rem;
+}
+
+.couple-plan-card-meta > * {
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  background: rgba(121, 166, 171, 0.1);
+}
+
+.couple-plan-card-meta .couple-plan-status {
+  background: color-mix(in srgb, var(--highlight) 70%, var(--light));
+  color: var(--secondary);
+  font-weight: 800;
+}
+
+.couple-plan-card-notes {
+  white-space: pre-wrap;
+}
+
+.couple-plan-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+}
+
+.couple-plan-card-actions button.is-danger {
+  border-color: #a13d3d;
+  color: #a13d3d;
+}
+
+.couple-planner.is-loading {
+  cursor: progress;
+}
+
+@media (max-width: 720px) {
+  body[data-slug="our-plans"] #quartz-body {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .couple-plan-section-heading,
+  .couple-plan-form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .couple-plan-form-grid,
+  .couple-plan-asset-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .couple-plan-filters {
+    width: 100%;
+  }
+
+  .couple-plan-filters button {
+    flex: 1;
+  }
+
+  .couple-plan-card {
+    grid-template-columns: 1fr;
+  }
+
+  .couple-plan-card-image {
+    min-height: 8rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html:focus-within {
     scroll-behavior: auto;

@@ -68,6 +68,23 @@ type CommentRow = {
   updated_at: string
 }
 
+type CouplePlanRow = {
+  id: string
+  board_key: string
+  title: string
+  scheduled_date: string
+  person: string
+  plan_status: string
+  notes: string
+  asset_name: string
+  asset_src: string
+  asset_category: string
+  asset_category_label: string
+  asset_pack: string
+  created_at: string
+  updated_at: string
+}
+
 class HttpError extends Error {
   status: number
 
@@ -83,6 +100,9 @@ const maxBoardLength = 96
 const maxAssetLength = 280
 const maxStickerPageLabelLength = 80
 const maxStickerPageKeyLength = 64
+const maxPlanTitleLength = 120
+const maxPlanPersonLength = 40
+const maxPlanNotesLength = 2000
 const adminVisitorId = "admin"
 const calendarEditorVisitorId = "calendar-editor"
 const visitorTokenVersion = "v1"
@@ -177,6 +197,22 @@ function cleanDate(value: unknown) {
   return date
 }
 
+function cleanOptionalDate(value: unknown) {
+  const date = cleanText(value, "scheduledDate", 10)
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpError(400, "scheduledDate must be empty or YYYY-MM-DD.")
+  }
+  return date
+}
+
+function cleanPlanStatus(value: unknown) {
+  const status = cleanText(value, "status", 16, { required: true })
+  if (!["planned", "in-progress", "done"].includes(status)) {
+    throw new HttpError(400, "status must be planned, in-progress, or done.")
+  }
+  return status
+}
+
 function cleanBoardKey(value: unknown) {
   const key = cleanText(value, "boardKey", maxBoardLength, { required: true })
   if (!/^[\w:.-]+$/.test(key)) {
@@ -222,6 +258,38 @@ function cleanAssetSrc(value: unknown) {
     throw new HttpError(400, "Only public site sticker assets can be shared.")
   }
   return src
+}
+
+function cleanPlanAsset(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      name: "",
+      src: "",
+      category: "",
+      categoryLabel: "",
+      pack: "",
+    }
+  }
+
+  const asset = value as Record<string, unknown>
+  const src = cleanText(asset.src, "asset.src", maxAssetLength)
+  if (!src) {
+    return {
+      name: "",
+      src: "",
+      category: "",
+      categoryLabel: "",
+      pack: "",
+    }
+  }
+
+  return {
+    name: cleanText(asset.name, "asset.name", 140, { required: true }),
+    src: cleanAssetSrc(src),
+    category: cleanText(asset.category, "asset.category", 96),
+    categoryLabel: cleanText(asset.categoryLabel, "asset.categoryLabel", 140),
+    pack: cleanText(asset.pack, "asset.pack", 140),
+  }
 }
 
 function visitorSigningSecret(env: Env) {
@@ -411,6 +479,29 @@ function mapComment(row: CommentRow, includeVisitorId = false) {
     owned: true,
     ...(includeVisitorId ? { visitorId: row.visitor_id } : {}),
     status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function mapCouplePlan(row: CouplePlanRow) {
+  return {
+    id: row.id,
+    boardKey: row.board_key,
+    title: row.title,
+    scheduledDate: row.scheduled_date,
+    person: row.person,
+    planStatus: row.plan_status,
+    notes: row.notes,
+    asset: row.asset_src
+      ? {
+          name: row.asset_name,
+          src: row.asset_src,
+          category: row.asset_category,
+          categoryLabel: row.asset_category_label,
+          pack: row.asset_pack,
+        }
+      : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -717,6 +808,144 @@ async function saveComment(request: Request, env: Env) {
   return json(request, env, 200, { comment: row ? mapComment(row) : null })
 }
 
+function cleanCouplePlanPayload(payload: Record<string, unknown>) {
+  return {
+    title: cleanText(payload.title, "title", maxPlanTitleLength, {
+      required: true,
+    }),
+    scheduledDate: cleanOptionalDate(payload.scheduledDate),
+    person: cleanText(payload.person, "person", maxPlanPersonLength),
+    planStatus: cleanPlanStatus(payload.status),
+    notes: cleanText(payload.notes, "notes", maxPlanNotesLength),
+    asset: cleanPlanAsset(payload.asset),
+  }
+}
+
+async function listCouplePlans(request: Request, env: Env, url: URL) {
+  await requireCalendarAccess(request, env)
+  const boardKey = cleanBoardKey(url.searchParams.get("board"))
+  const rows = await env.DB.prepare(
+    `
+      SELECT *
+      FROM couple_plans
+      WHERE board_key = ?
+      ORDER BY
+        CASE WHEN plan_status = 'done' THEN 1 ELSE 0 END ASC,
+        CASE WHEN scheduled_date = '' THEN 1 ELSE 0 END ASC,
+        scheduled_date ASC,
+        created_at ASC
+      LIMIT 500
+    `,
+  )
+    .bind(boardKey)
+    .all<CouplePlanRow>()
+
+  return json(request, env, 200, {
+    plans: (rows.results ?? []).map(mapCouplePlan),
+  })
+}
+
+async function createCouplePlan(request: Request, env: Env) {
+  await requireCalendarAccess(request, env)
+  const payload = await readJson<Record<string, unknown>>(request)
+  const boardKey = cleanBoardKey(payload.boardKey)
+  const plan = cleanCouplePlanPayload(payload)
+  const id = crypto.randomUUID()
+
+  await env.DB.prepare(
+    `
+      INSERT INTO couple_plans (
+        id, board_key, title, scheduled_date, person, plan_status, notes,
+        asset_name, asset_src, asset_category, asset_category_label, asset_pack
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+  )
+    .bind(
+      id,
+      boardKey,
+      plan.title,
+      plan.scheduledDate,
+      plan.person,
+      plan.planStatus,
+      plan.notes,
+      plan.asset.name,
+      plan.asset.src,
+      plan.asset.category,
+      plan.asset.categoryLabel,
+      plan.asset.pack,
+    )
+    .run()
+
+  const row = await env.DB.prepare("SELECT * FROM couple_plans WHERE id = ?")
+    .bind(id)
+    .first<CouplePlanRow>()
+  return json(request, env, 201, { plan: row ? mapCouplePlan(row) : null })
+}
+
+async function updateCouplePlan(request: Request, env: Env, id: string) {
+  await requireCalendarAccess(request, env)
+  const existing = await env.DB.prepare("SELECT * FROM couple_plans WHERE id = ?")
+    .bind(id)
+    .first<CouplePlanRow>()
+  if (!existing) {
+    throw new HttpError(404, "Plan was not found.")
+  }
+
+  const payload = await readJson<Record<string, unknown>>(request)
+  const plan = cleanCouplePlanPayload(payload)
+  const result = await env.DB.prepare(
+    `
+      UPDATE couple_plans
+      SET
+        title = ?,
+        scheduled_date = ?,
+        person = ?,
+        plan_status = ?,
+        notes = ?,
+        asset_name = ?,
+        asset_src = ?,
+        asset_category = ?,
+        asset_category_label = ?,
+        asset_pack = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+  )
+    .bind(
+      plan.title,
+      plan.scheduledDate,
+      plan.person,
+      plan.planStatus,
+      plan.notes,
+      plan.asset.name,
+      plan.asset.src,
+      plan.asset.category,
+      plan.asset.categoryLabel,
+      plan.asset.pack,
+      id,
+    )
+    .run()
+
+  if ((result.meta?.changes ?? 0) === 0) {
+    throw new HttpError(404, "Plan was not found.")
+  }
+
+  const row = await env.DB.prepare("SELECT * FROM couple_plans WHERE id = ?")
+    .bind(id)
+    .first<CouplePlanRow>()
+  return json(request, env, 200, { plan: row ? mapCouplePlan(row) : null })
+}
+
+async function deleteCouplePlan(request: Request, env: Env, id: string) {
+  await requireCalendarAccess(request, env)
+  const result = await env.DB.prepare("DELETE FROM couple_plans WHERE id = ?").bind(id).run()
+  if ((result.meta?.changes ?? 0) === 0) {
+    throw new HttpError(404, "Plan was not found.")
+  }
+  return json(request, env, 200, { ok: true })
+}
+
 async function listAdminItems(request: Request, env: Env, url: URL) {
   await requireAdmin(request, env)
   const status = cleanStatus(url.searchParams.get("status") ?? "pending")
@@ -813,6 +1042,26 @@ async function handleRequest(request: Request, env: Env) {
     }
     if (request.method === "POST") {
       return saveComment(request, env)
+    }
+  }
+
+  if (pathname === "/api/plans") {
+    if (request.method === "GET") {
+      return listCouplePlans(request, env, url)
+    }
+    if (request.method === "POST") {
+      return createCouplePlan(request, env)
+    }
+  }
+
+  const planMatch = pathname.match(/^\/api\/plans\/([^/]+)$/)
+  if (planMatch) {
+    const id = decodeURIComponent(planMatch[1])
+    if (request.method === "PATCH") {
+      return updateCouplePlan(request, env, id)
+    }
+    if (request.method === "DELETE") {
+      return deleteCouplePlan(request, env, id)
     }
   }
 

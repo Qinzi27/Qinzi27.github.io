@@ -33,6 +33,23 @@ type CommentRow = {
   updated_at: string
 }
 
+type CouplePlanRow = {
+  id: string
+  board_key: string
+  title: string
+  scheduled_date: string
+  person: string
+  plan_status: string
+  notes: string
+  asset_name: string
+  asset_src: string
+  asset_category: string
+  asset_category_label: string
+  asset_pack: string
+  created_at: string
+  updated_at: string
+}
+
 type JsonObject = Record<string, unknown>
 
 const timestamp = "2026-07-10 00:00:00"
@@ -52,6 +69,7 @@ function asNumber(value: unknown) {
 class MemoryD1 implements D1Database {
   readonly stickers = new Map<string, StickerRow>()
   readonly comments = new Map<string, CommentRow>()
+  readonly plans = new Map<string, CouplePlanRow>()
 
   prepare(query: string): D1PreparedStatement {
     return new MemoryStatement(this, query.replace(/\s+/g, " ").trim())
@@ -79,6 +97,11 @@ class MemoryStatement implements D1PreparedStatement {
 
     if (this.query === "SELECT * FROM comments WHERE date = ? AND visitor_id = ?") {
       const row = this.database.comments.get(this.commentKey(this.values[0], this.values[1]))
+      return row ? (clone(row) as T) : null
+    }
+
+    if (this.query === "SELECT * FROM couple_plans WHERE id = ?") {
+      const row = this.database.plans.get(asString(this.values[0]))
       return row ? (clone(row) as T) : null
     }
 
@@ -126,6 +149,25 @@ class MemoryStatement implements D1PreparedStatement {
         rows = rows.filter((row) => row.date >= from && row.date <= to)
       }
       rows.sort((left, right) => left.date.localeCompare(right.date) || left.created_at.localeCompare(right.created_at))
+      return { results: rows.map((row) => clone(row) as T) }
+    }
+
+    if (this.query.startsWith("SELECT * FROM couple_plans WHERE board_key = ?")) {
+      const boardKey = asString(this.values[0])
+      const rows = [...this.database.plans.values()]
+        .filter((row) => row.board_key === boardKey)
+        .sort((left, right) => {
+          const statusOrder =
+            Number(left.plan_status === "done") - Number(right.plan_status === "done")
+          if (statusOrder !== 0) {
+            return statusOrder
+          }
+          const leftDate = left.scheduled_date || "9999-12-31"
+          const rightDate = right.scheduled_date || "9999-12-31"
+          return (
+            leftDate.localeCompare(rightDate) || left.created_at.localeCompare(right.created_at)
+          )
+        })
       return { results: rows.map((row) => clone(row) as T) }
     }
 
@@ -199,6 +241,55 @@ class MemoryStatement implements D1PreparedStatement {
     if (this.query === "DELETE FROM comments WHERE date = ? AND visitor_id = ?") {
       const key = this.commentKey(this.values[0], this.values[1])
       return { meta: { changes: this.database.comments.delete(key) ? 1 : 0 } }
+    }
+
+    if (this.query.startsWith("INSERT INTO couple_plans (")) {
+      const row: CouplePlanRow = {
+        id: asString(this.values[0]),
+        board_key: asString(this.values[1]),
+        title: asString(this.values[2]),
+        scheduled_date: asString(this.values[3]),
+        person: asString(this.values[4]),
+        plan_status: asString(this.values[5]),
+        notes: asString(this.values[6]),
+        asset_name: asString(this.values[7]),
+        asset_src: asString(this.values[8]),
+        asset_category: asString(this.values[9]),
+        asset_category_label: asString(this.values[10]),
+        asset_pack: asString(this.values[11]),
+        created_at: timestamp,
+        updated_at: timestamp,
+      }
+      this.database.plans.set(row.id, row)
+      return { meta: { changes: 1 } }
+    }
+
+    if (this.query.startsWith("UPDATE couple_plans SET title = ?")) {
+      const id = asString(this.values[10])
+      const row = this.database.plans.get(id)
+      if (!row) {
+        return { meta: { changes: 0 } }
+      }
+      row.title = asString(this.values[0])
+      row.scheduled_date = asString(this.values[1])
+      row.person = asString(this.values[2])
+      row.plan_status = asString(this.values[3])
+      row.notes = asString(this.values[4])
+      row.asset_name = asString(this.values[5])
+      row.asset_src = asString(this.values[6])
+      row.asset_category = asString(this.values[7])
+      row.asset_category_label = asString(this.values[8])
+      row.asset_pack = asString(this.values[9])
+      row.updated_at = timestamp
+      return { meta: { changes: 1 } }
+    }
+
+    if (this.query === "DELETE FROM couple_plans WHERE id = ?") {
+      return {
+        meta: {
+          changes: this.database.plans.delete(asString(this.values[0])) ? 1 : 0,
+        },
+      }
     }
 
     throw new Error(`Unsupported D1 run() query: ${this.query}`)
@@ -307,6 +398,25 @@ function stickerPayload(id: string, boardKey = "public-wall"): JsonObject {
 
 function stickerUpdate(visitorId = "ignored-body-visitor"): JsonObject {
   return { visitorId, x: 40, y: 45, size: 80, rotation: 5 }
+}
+
+function planPayload(overrides: JsonObject = {}): JsonObject {
+  return {
+    boardKey: "our-plans",
+    title: "Visit the museum",
+    scheduledDate: "2026-08-02",
+    person: "我们一起",
+    status: "planned",
+    notes: "Book tickets before Friday.",
+    asset: {
+      name: "Test sticker",
+      src: "/assets/stickers/test.gif",
+      category: "test",
+      categoryLabel: "Test",
+      pack: "tests",
+    },
+    ...overrides,
+  }
 }
 
 function objectAt(value: unknown, key: string) {
@@ -622,4 +732,109 @@ test("calendar password holders can edit calendar data without receiving admin a
     env,
   )
   assert.equal(adminCalendarDelete.status, 200)
+})
+
+test("calendar password holders share private plans with validated image assets", async () => {
+  const { database, env } = makeEnv()
+  const visitorToken = await issueVisitorToken(env)
+
+  const blockedRequests = [
+    apiRequest("/api/plans?board=our-plans", { token: visitorToken }),
+    apiRequest("/api/plans", {
+      method: "POST",
+      token: visitorToken,
+      body: planPayload(),
+    }),
+  ]
+  for (const request of blockedRequests) {
+    const response = await worker.fetch(request, env)
+    assert.equal(response.status, 401)
+  }
+
+  const createResponse = await worker.fetch(
+    apiRequest("/api/plans", {
+      method: "POST",
+      calendar: "calendar-secret",
+      body: planPayload(),
+    }),
+    env,
+  )
+  assert.equal(createResponse.status, 201)
+  const createPayload = await responseJson(createResponse)
+  const createdPlan = objectAt(createPayload, "plan") as JsonObject
+  const planId = String(createdPlan.id)
+  assert.match(planId, /^[0-9a-f-]{36}$/i)
+  assert.equal(createdPlan.planStatus, "planned")
+  assert.equal(
+    objectAt(createdPlan, "asset") && (objectAt(createdPlan, "asset") as JsonObject).src,
+    "/assets/stickers/test.gif",
+  )
+  assert.equal(database.plans.get(planId)?.person, "我们一起")
+
+  const listResponse = await worker.fetch(
+    apiRequest("/api/plans?board=our-plans", { calendar: "calendar-secret" }),
+    env,
+  )
+  assert.equal(listResponse.status, 200)
+  const listPayload = await responseJson(listResponse)
+  assert.equal((listPayload.plans as JsonObject[]).length, 1)
+
+  const updateResponse = await worker.fetch(
+    apiRequest(`/api/plans/${planId}`, {
+      method: "PATCH",
+      calendar: "calendar-secret",
+      body: planPayload({
+        title: "Museum visit completed",
+        status: "done",
+        asset: null,
+      }),
+    }),
+    env,
+  )
+  assert.equal(updateResponse.status, 200)
+  const updatePayload = await responseJson(updateResponse)
+  const updatedPlan = objectAt(updatePayload, "plan") as JsonObject
+  assert.equal(updatedPlan.planStatus, "done")
+  assert.equal(updatedPlan.asset, null)
+
+  const invalidStatus = await worker.fetch(
+    apiRequest(`/api/plans/${planId}`, {
+      method: "PATCH",
+      calendar: "calendar-secret",
+      body: planPayload({ status: "hidden" }),
+    }),
+    env,
+  )
+  assert.equal(invalidStatus.status, 400)
+
+  const invalidAsset = await worker.fetch(
+    apiRequest(`/api/plans/${planId}`, {
+      method: "PATCH",
+      calendar: "calendar-secret",
+      body: planPayload({
+        asset: { name: "External", src: "https://example.test/private.png" },
+      }),
+    }),
+    env,
+  )
+  assert.equal(invalidAsset.status, 400)
+
+  const blockedDelete = await worker.fetch(
+    apiRequest(`/api/plans/${planId}`, {
+      method: "DELETE",
+      token: visitorToken,
+    }),
+    env,
+  )
+  assert.equal(blockedDelete.status, 401)
+
+  const deleteResponse = await worker.fetch(
+    apiRequest(`/api/plans/${planId}`, {
+      method: "DELETE",
+      calendar: "calendar-secret",
+    }),
+    env,
+  )
+  assert.equal(deleteResponse.status, 200)
+  assert.equal(database.plans.size, 0)
 })

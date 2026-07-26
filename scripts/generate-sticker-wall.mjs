@@ -6,8 +6,11 @@ import { slugifyFilePath } from "@quartz-community/utils"
 const STICKER_DIR = path.resolve("content/assets/stickers")
 const PAGE_PATH = path.resolve("content/Sticker Wall.md")
 const CATEGORY_PAGE_PATH = path.resolve("content/Sticker Categories.md")
+const PLANNER_PAGE_PATH = path.resolve("content/Our Plans.md")
 const START_MARKER = "<!-- sticker-wall-assets:start -->"
 const END_MARKER = "<!-- sticker-wall-assets:end -->"
+const PLANNER_START_MARKER = "<!-- couple-plan-assets:start -->"
+const PLANNER_END_MARKER = "<!-- couple-plan-assets:end -->"
 const IMAGE_EXTENSIONS = new Set([".gif", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".avif"])
 const watchMode = process.argv.includes("--watch")
 const PACK_LABELS = new Map([
@@ -127,12 +130,12 @@ function groupAssetsByCategory(assets) {
   }))
 }
 
-function replaceMarkedBlock(source, startMarker, endMarker, replacement) {
+function replaceMarkedBlock(source, startMarker, endMarker, replacement, filePath = PAGE_PATH) {
   const start = source.indexOf(startMarker)
   const end = source.indexOf(endMarker)
 
   if (start === -1 || end === -1 || end < start) {
-    throw new Error(`Missing sticker wall marker block in ${normalizePath(PAGE_PATH)}`)
+    throw new Error(`Missing generated asset marker block in ${normalizePath(filePath)}`)
   }
 
   return `${source.slice(0, start + startMarker.length)}\n${replacement}\n${source.slice(end)}`
@@ -223,14 +226,32 @@ function generateStickerWall() {
     JSON.stringify(assets, null, 2),
     "</script>",
   ].join("\n")
+  const plannerAssetBlock = [
+    '<script type="application/json" data-plan-assets>',
+    // The planner reuses the same manifest but keeps it compact so the protected
+    // Markdown shell remains reviewable even when the material library grows.
+    JSON.stringify(assets),
+    "</script>",
+  ].join("\n")
 
   const source = fs.readFileSync(PAGE_PATH, "utf8")
   const wroteWall = writeFileIfChanged(PAGE_PATH, replaceMarkedBlock(source, START_MARKER, END_MARKER, assetBlock))
   const wroteCategories = writeFileIfChanged(CATEGORY_PAGE_PATH, makeCategoryPage(assets))
+  const plannerSource = fs.readFileSync(PLANNER_PAGE_PATH, "utf8")
+  const wrotePlanner = writeFileIfChanged(
+    PLANNER_PAGE_PATH,
+    replaceMarkedBlock(
+      plannerSource,
+      PLANNER_START_MARKER,
+      PLANNER_END_MARKER,
+      plannerAssetBlock,
+      PLANNER_PAGE_PATH,
+    ),
+  )
 
   console.log(
     `Sticker wall generated: ${assets.length} asset(s), ${groups.length} category page section(s)` +
-      (wroteWall || wroteCategories ? "" : " (no changes)"),
+      (wroteWall || wroteCategories || wrotePlanner ? "" : " (no changes)"),
   )
 }
 

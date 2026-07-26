@@ -9,6 +9,8 @@ import popoverScript from "../../components/scripts/popover.inline"
 // @ts-ignore
 import calendarCommentsScript from "../../components/scripts/calendarComments.inline"
 // @ts-ignore
+import couplePlannerScript from "../../components/scripts/couplePlanner.inline"
+// @ts-ignore
 import interactionsClientScript from "../../components/scripts/interactionsClient.inline"
 // @ts-ignore
 import stickerWallScript from "../../components/scripts/stickerWall.inline"
@@ -104,6 +106,7 @@ function addGlobalPageResources(ctx: BuildCtx, componentResources: ComponentReso
 
   componentResources.afterDOMLoaded.push(stickerWallScript)
   componentResources.afterDOMLoaded.push(calendarCommentsScript)
+  componentResources.afterDOMLoaded.push(couplePlannerScript)
 
   if (cfg.analytics?.provider === "google") {
     const tagId = cfg.analytics.tagId

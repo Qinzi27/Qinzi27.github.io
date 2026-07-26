@@ -37,6 +37,25 @@ type QinziInteractionStickerPage = {
   updatedAt?: string
 }
 
+type QinziInteractionPlan = {
+  id: string
+  boardKey: string
+  title: string
+  scheduledDate?: string
+  person?: string
+  planStatus: "planned" | "in-progress" | "done"
+  notes?: string
+  asset?: {
+    name: string
+    src: string
+    category?: string
+    categoryLabel?: string
+    pack?: string
+  } | null
+  createdAt?: string
+  updatedAt?: string
+}
+
 type QinziInteractionAccessOptions = {
   owner?: boolean
   calendar?: boolean
@@ -69,6 +88,10 @@ type QinziInteractionClient = {
   ) => Promise<QinziInteractionStickerPage | null>
   listComments: (params: Record<string, string>) => Promise<QinziInteractionComment[]>
   saveComment: (payload: Record<string, unknown>) => Promise<QinziInteractionComment | null>
+  listPlans: (boardKey: string) => Promise<QinziInteractionPlan[]>
+  createPlan: (payload: Record<string, unknown>) => Promise<QinziInteractionPlan | null>
+  updatePlan: (id: string, payload: Record<string, unknown>) => Promise<QinziInteractionPlan | null>
+  deletePlan: (id: string) => Promise<void>
 }
 
 const qinziInteractionsWindow = window as Window & {
@@ -360,6 +383,41 @@ qinziInteractionsWindow.QinziInteractions = {
       body: JSON.stringify(payload),
     })
     return response.comment ?? null
+  },
+  async listPlans(boardKey: string) {
+    const board = encodeURIComponent(boardKey)
+    const payload = await qinziInteractionRequest<{
+      plans: QinziInteractionPlan[]
+    }>(`/api/plans?board=${board}`, {
+      headers: calendarRequestHeaders(),
+    })
+    return payload.plans ?? []
+  },
+  async createPlan(payload: Record<string, unknown>) {
+    const response = await qinziInteractionRequest<{
+      plan: QinziInteractionPlan | null
+    }>("/api/plans", {
+      method: "POST",
+      headers: calendarRequestHeaders(),
+      body: JSON.stringify(payload),
+    })
+    return response.plan ?? null
+  },
+  async updatePlan(id: string, payload: Record<string, unknown>) {
+    const response = await qinziInteractionRequest<{
+      plan: QinziInteractionPlan | null
+    }>(`/api/plans/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: calendarRequestHeaders(),
+      body: JSON.stringify(payload),
+    })
+    return response.plan ?? null
+  },
+  async deletePlan(id: string) {
+    await qinziInteractionRequest(`/api/plans/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: calendarRequestHeaders(),
+    })
   },
 }
 

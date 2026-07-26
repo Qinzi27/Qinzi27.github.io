@@ -1,6 +1,6 @@
 # Qinzi27 Interactions Worker
 
-This Cloudflare Worker stores sticker placements and protected calendar comments in the existing D1 schema.
+This Cloudflare Worker stores sticker placements, protected calendar comments, and shared couple plans in D1.
 
 ## Authentication model
 
@@ -26,6 +26,8 @@ Rotating `VISITOR_SIGNING_SECRET` invalidates previously issued visitor tokens. 
 | All sticker methods on a `YYYY-MM` board           | Valid calendar token, or admin                                                                              |
 | `GET /api/comments`                                | Valid calendar token or admin; requires `date`, `month`, or both `from` and `to`                            |
 | `POST /api/comments`                               | Valid calendar token, or admin                                                                              |
+| `GET/POST /api/plans`                              | Valid calendar token, or admin                                                                              |
+| `PATCH/DELETE /api/plans/:id`                      | Valid calendar token, or admin                                                                              |
 | `/api/admin/*` and `POST /api/sticker-pages`       | Admin only                                                                                                  |
 
 The CORS preflight allowlist includes `X-Visitor-Token` and `X-Calendar-Token`.
@@ -50,7 +52,7 @@ npx wrangler deploy --config workers/interactions/wrangler.toml
 
 `CALENDAR_ACCESS_TOKEN` must exactly match the GitHub Actions secret used when building the encrypted page. Deploy the Worker first, then deploy the static site.
 
-This authentication update reuses the current `visitor_id` columns and requires no D1 migration.
+The shared planner uses `migrations/0003_couple_plans.sql`. Apply remote migrations before deploying the Worker code that exposes `/api/plans`.
 
 ## Moderation mode
 

@@ -34,6 +34,7 @@ Welcome. This is a long-term Markdown garden for academic learning, research rea
   <a class="garden-card" href="./sticker-categories"><span>08</span><strong>Sticker Categories</strong><em>preview sticker packs</em></a>
   <a class="garden-card" href="./our-calendar/"><span>❤</span><strong>我们的小日历</strong><em>输入密码后查看日常记录</em></a>
   <a class="garden-card garden-card--building" href="./under-construction"><span>🚧</span><strong>施工区</strong><em>正在搭建的栏目与下一步</em></a>
+  <a class="garden-card" href="./our-plans"><span>09</span><strong>我们的计划</strong><em>输入日历密码后共同编辑安排</em></a>
 </div>
 
 ## How this garden grows

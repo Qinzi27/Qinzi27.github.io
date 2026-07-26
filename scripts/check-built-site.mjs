@@ -15,13 +15,16 @@ const REQUIRED_ROUTES = [
   "sticker-wall.html",
   "sticker-categories.html",
   "our-calendar/index.html",
+  "our-plans.html",
 ]
 const UNLISTED_SLUGS = [
   "sticker-wall",
   "sticker-categories",
   "under-construction",
   "research--and--papers/paper-reading-template-in-action",
+  "our-plans",
 ]
+const PROTECTED_EDITOR_ROUTES = ["our-calendar/index.html", "our-plans.html"]
 
 function walk(directory, files = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -126,22 +129,28 @@ if (calendarAccessToken) {
     }
   }
 
-
-  const calendarHtmlPath = path.join(PUBLIC_DIR, "our-calendar", "index.html")
-  const calendarHtml = fs.readFileSync(calendarHtmlPath, "utf8")
-  const encryptedPayload = calendarHtml.match(/data-encrypted=["']([^"']+)["']/)?.[1] ?? ""
-  const iterations = Number(calendarHtml.match(/data-iterations=["'](\d+)["']/)?.[1] ?? 600000)
   const password = process.env.PARENT_CALENDAR_PASSWORD ?? ""
-  if (!encryptedPayload || !password) {
-    failures.push("Protected calendar ciphertext or password is unavailable for the encrypted-token check.")
-  } else {
+  for (const relative of PROTECTED_EDITOR_ROUTES) {
+    const protectedHtmlPath = path.join(PUBLIC_DIR, relative)
+    const protectedHtml = fs.readFileSync(protectedHtmlPath, "utf8")
+    const encryptedPayload = protectedHtml.match(/data-encrypted=["']([^"']+)["']/)?.[1] ?? ""
+    const iterations = Number(protectedHtml.match(/data-iterations=["'](\d+)["']/)?.[1] ?? 600000)
+    if (!encryptedPayload || !password) {
+      failures.push(
+        `Protected editor ciphertext or password is unavailable for public/${relative}.`,
+      )
+      continue
+    }
+
     try {
-      const decryptedCalendar = decryptProtectedPayload(encryptedPayload, password, iterations)
-      if (!decryptedCalendar.includes(`data-calendar-access-token="${calendarAccessToken}"`)) {
-        failures.push("Encrypted calendar payload is missing its shared editor token marker.")
+      const decryptedContent = decryptProtectedPayload(encryptedPayload, password, iterations)
+      if (!decryptedContent.includes(`data-calendar-access-token="${calendarAccessToken}"`)) {
+        failures.push(
+          `Encrypted editor payload is missing its shared token marker: public/${relative}.`,
+        )
       }
     } catch {
-      failures.push("Protected calendar payload could not be decrypted during the encrypted-token check.")
+      failures.push(`Protected editor payload could not be decrypted: public/${relative}.`)
     }
   }
 }

@@ -155,7 +155,8 @@ function validateProtectedMarkdown(source, frontmatter, relative) {
     typeof frontmatter.calendarAccessToken === "string" && frontmatter.calendarAccessToken.trim().length > 0
   const hasCalendarTokenEnv =
     typeof frontmatter.calendarAccessTokenEnv === "string" && frontmatter.calendarAccessTokenEnv.trim().length > 0
-  const requiresCalendarToken = String(frontmatter.type ?? "").toLowerCase() === "couple-calendar"
+  const protectedPageType = String(frontmatter.type ?? "").toLowerCase()
+  const requiresCalendarToken = ["couple-calendar", "couple-planner"].includes(protectedPageType)
 
   if (hasLiteralPassword) {
     failures.push({
