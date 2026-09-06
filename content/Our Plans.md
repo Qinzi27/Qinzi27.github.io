@@ -12,6 +12,10 @@ unlisted: true
 summary: "A private shared planner for two people."
 ---
 
+<nav class="couple-month-nav" aria-label="日历与计划导航">
+  <a class="month-turn internal" href="./our-calendar/" data-no-popover="true"><span aria-hidden="true">←</span> 小小日历</a>
+</nav>
+
 <div class="couple-planner-intro">
 <p>把想一起完成的事情放在这里。两个人输入和日历相同的密码后，会看到同一份计划清单。</p>
 <p class="couple-planner-hint">计划内容保存在共享的私密数据区；这里不会把计划明文写进公开页面。</p>
